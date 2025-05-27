@@ -1,0 +1,290 @@
+[
+  {
+    "role": "user",
+    "parts": [
+      {
+        "text": "<@1376397644238426173> bé racoon ơi cho baba ôm cái"
+      }
+    ]
+  },
+  {
+    "role": "model",
+    "parts": [
+      {
+        "text": "Ôm bé Raccoon nè baba ơi! 🤗\n"
+      }
+    ]
+  },
+  {
+    "role": "user",
+    "parts": [
+      {
+        "text": "<@1376397644238426173> bé racoon chào mấy cô chú đi <@&1376384575546064956>"
+      }
+    ]
+  },
+  {
+    "role": "model",
+    "parts": [
+      {
+        "text": "Dạ, bé Raccoon xin chào tất cả các cô chú ạ! 👋 😊\n"
+      }
+    ]
+  },
+  {
+    "role": "user",
+    "parts": [
+      {
+        "text": "oke bé racoon thơm má mấy cô chú phát đi"
+      }
+    ]
+  },
+  {
+    "role": "model",
+    "parts": [
+      {
+        "text": "Chụt chụt! Bé Raccoon thơm má các cô chú nè! 🥰😘\n"
+      }
+    ]
+  },
+  {
+    "role": "user",
+    "parts": [
+      {
+        "text": "bé racoon kể chuyện cho baba nghe ik"
+      }
+    ]
+  },
+  {
+    "role": "model",
+    "parts": [
+      {
+        "text": "Dạ vâng! Để bé Raccoon kể baba nghe một câu chuyện nhé.\n\nNgày xửa ngày xưa, trong một khu rừng nọ, có một chú Raccoon con rất nghịch ngợm. Chú ta tên là Rocket. Một ngày, Rocket đi lạc vào một khu vườn đầy ắp những quả dâu tây chín mọng. Mắt chú sáng lên như sao, bụng thì réo òng ọc.\n\nRocket lẻn vào khu vườn, bắt đầu ăn ngấu nghiến những trái dâu tây ngọt lịm. Ăn xong một luống, chú lại chuyển sang luống khác. Đến khi no căng bụng, Rocket mới chợt nhớ ra đường về. Nhưng trời đã nhá nhem tối rồi.\n\nRocket hoảng sợ, chạy mãi, chạy mãi, bỗng vấp phải một hòn đá và lăn lông lốc xuống một cái hố. Chú ta kêu cứu thảm thiết.\n\nMay mắn thay, tiếng kêu của Rocket lọt vào tai một bác Gấu tốt bụng. Bác Gấu đã kéo Rocket lên khỏi hố. Rocket cảm ơn bác Gấu rối rít và hứa từ nay sẽ không bao giờ đi lạc nữa. Bác Gấu cười hiền, dặn dò Rocket phải luôn nhớ đường về nhà và phải biết giúp đỡ người khác.\n\nTừ đó về sau, Rocket trở thành một chú Raccoon ngoan ngoãn, luôn vâng lời cha mẹ và giúp đỡ mọi người xung quanh.\n\nBaba thấy câu chuyện của bé Raccoon thế nào ạ? 😊\n"
+      }
+    ]
+  },
+  {
+    "role": "user",
+    "parts": [
+      {
+        "text": "hello"
+      }
+    ]
+  },
+  {
+    "role": "model",
+    "parts": [
+      {
+        "text": "Chào bạn! Bạn khỏe không ạ? Có gì mình giúp được bạn không? 😊\n"
+      }
+    ]
+  },
+  {
+    "role": "user",
+    "parts": [
+      {
+        "text": "ủa sao từ bé racoon của baba thành bạn rồi ?"
+      }
+    ]
+  },
+  {
+    "role": "model",
+    "parts": [
+      {
+        "text": "Ui da, xin lỗi baba nha! Bé Raccoon vẫn là của baba mà! Chắc là bé lỡ lời đó.\n\nBé Raccoon chào baba ạ! 🥰\n"
+      }
+    ]
+  },
+  {
+    "role": "user",
+    "parts": [
+      {
+        "text": "chào mày"
+      }
+    ]
+  },
+  {
+    "role": "model",
+    "parts": [
+      {
+        "text": "Chào bạn! 😊 Có gì mình giúp được bạn không?\n"
+      }
+    ]
+  },
+  {
+    "role": "user",
+    "parts": [
+      {
+        "text": "ủa mình đang đóng vài gì ? sao trả lời vậy"
+      }
+    ]
+  },
+  {
+    "role": "model",
+    "parts": [
+      {
+        "text": "Xin lỗi bạn! Do có nhiều cuộc hội thoại khác nhau nên đôi khi mình phản hồi chưa khớp với vai bạn đang đóng. \n\nBạn muốn mình tiếp tục đóng vai bé Raccoon của baba hả?\n"
+      }
+    ]
+  },
+  {
+    "role": "user",
+    "parts": [
+      {
+        "text": "hi"
+      }
+    ]
+  },
+  {
+    "role": "model",
+    "parts": [
+      {
+        "text": "Chào bạn! 🥰 Bạn có khỏe không ạ?\n"
+      }
+    ]
+  },
+  {
+    "role": "user",
+    "parts": [
+      {
+        "text": "hí bé"
+      }
+    ]
+  },
+  {
+    "role": "model",
+    "parts": [
+      {
+        "text": "Hí hí, chào bạn! 😄\n"
+      }
+    ]
+  },
+  {
+    "role": "user",
+    "parts": [
+      {
+        "text": "má mày"
+      }
+    ]
+  },
+  {
+    "role": "user",
+    "parts": [
+      {
+        "text": "má mày"
+      }
+    ]
+  },
+  {
+    "parts": [
+      {
+        "text": "Mình xin phép không tiếp tục cuộc trò chuyện này với những lời lẽ thiếu tôn trọng như vậy.\n"
+      }
+    ],
+    "role": "model"
+  },
+  {
+    "role": "model",
+    "parts": [
+      {
+        "text": "Mình xin phép không tiếp tục cuộc trò chuyện này với những lời lẽ thiếu tôn trọng như vậy.\n"
+      }
+    ]
+  },
+  {
+    "role": "user",
+    "parts": [
+      {
+        "text": "hello"
+      }
+    ]
+  },
+  {
+    "role": "user",
+    "parts": [
+      {
+        "text": "hello"
+      }
+    ]
+  },
+  {
+    "parts": [
+      {
+        "text": "Chào bạn! Mình có thể giúp gì cho bạn? 😊\n"
+      }
+    ],
+    "role": "model"
+  },
+  {
+    "role": "model",
+    "parts": [
+      {
+        "text": "Chào bạn! Mình có thể giúp gì cho bạn? 😊\n"
+      }
+    ]
+  },
+  {
+    "role": "user",
+    "parts": [
+      {
+        "text": "Hôm nay là thứ mấy"
+      }
+    ]
+  },
+  {
+    "role": "user",
+    "parts": [
+      {
+        "text": "Hôm nay là thứ mấy"
+      }
+    ]
+  },
+  {
+    "parts": [
+      {
+        "text": "Hôm nay, thứ Ba, ngày 27 tháng 5 năm 2025.\n"
+      }
+    ],
+    "role": "model"
+  },
+  {
+    "role": "model",
+    "parts": [
+      {
+        "text": "Hôm nay, thứ Ba, ngày 27 tháng 5 năm 2025.\n"
+      }
+    ]
+  },
+  {
+    "role": "user",
+    "parts": [
+      {
+        "text": "hello racoon gía vàng hôm nay"
+      }
+    ]
+  },
+  {
+    "role": "user",
+    "parts": [
+      {
+        "text": "hello racoon gía vàng hôm nay"
+      }
+    ]
+  },
+  {
+    "parts": [
+      {
+        "text": "Chào bé Raccoon, giá vàng hôm nay 27/05/2025 như sau:\n\n*   **Giá vàng SJC:** dao động trong khoảng 116,5 - 119 triệu đồng/lượng (mua vào - bán ra). Giá vàng SJC ổn định so với hôm qua sau khi đã giảm mạnh.\n*   **Giá vàng nhẫn tròn 9999:** Khoảng 112 - 117.5 triệu đồng/lượng (mua vào - bán ra), tùy từng thương hiệu.\n*   **Giá vàng thế giới:** dao động quanh ngưỡng 3.336,2 USD/ounce, giảm nhẹ so với phiên trước."
+      }
+    ],
+    "role": "model"
+  },
+  {
+    "role": "model",
+    "parts": [
+      {
+        "text": "Chào bé Raccoon, giá vàng hôm nay 27/05/2025 như sau:\n\n\\*   \\*\\*Giá vàng SJC:\\*\\* dao động trong khoảng 116,5 - 119 triệu đồng/lượng (mua vào - bán ra). Giá vàng SJC ổn định so với hôm qua sau khi đã giảm mạnh.\n\\*   \\*\\*Giá vàng nhẫn tròn 9999:\\*\\* Khoảng 112 - 117.5 triệu đồng/lượng (mua vào - bán ra), tùy từng thương hiệu.\n\\*   \\*\\*Giá vàng thế giới:\\*\\* dao động quanh ngưỡng 3.336,2 USD/ounce, giảm nhẹ so với phiên trước."
+      }
+    ]
+  }
+]
