@@ -15,6 +15,7 @@ class GptChatService {
       model: "gemini-2.0-flash-exp-image-generation",
       generationConfig: GEMINI_CONFIG.generationConfig
     });
+    this.MAX_HISTORY_LENGTH = 20;
     this.chatHistory = this.loadChatHistory();
     this.ensureLogsDirectory();
   }
@@ -47,6 +48,29 @@ class GptChatService {
     }
   }
 
+  addToHistory(role, content) {
+    // Kiểm tra trùng lặp trước khi thêm
+    const lastMessage = this.chatHistory[this.chatHistory.length - 1];
+    if (!lastMessage || lastMessage.role !== role || lastMessage.parts[0].text !== content) {
+      this.chatHistory.push({
+        role,
+        parts: [{ text: content }]
+      });
+
+      // Giới hạn lịch sử chat
+      if (this.chatHistory.length > this.MAX_HISTORY_LENGTH) {
+        this.chatHistory = this.chatHistory.slice(-this.MAX_HISTORY_LENGTH);
+      }
+
+      this.saveChatHistory();
+    }
+  }
+
+  clearHistory() {
+    this.chatHistory = [];
+    this.saveChatHistory();
+  }
+
   logError(error, context = {}) {
     const errorLog = {
       timestamp: new Date().toISOString(),
@@ -61,15 +85,11 @@ class GptChatService {
     );
   }
 
-  // Phương thức chat thông thường (không dùng search)
   async generateResponse(message) {
     try {
       const cleanedContent = message.content.replace(/<@!?\d+>/g, '').trim();
       
-      this.chatHistory.push({
-        role: "user",
-        parts: [{ text: cleanedContent }]
-      });
+      this.addToHistory("user", cleanedContent);
 
       const chat = this.model.startChat({
         history: this.chatHistory
@@ -80,25 +100,20 @@ class GptChatService {
       const text = response.text();
       const escapedMessage = escapeMarkdown(text);
 
-      this.chatHistory.push({
-        role: "model",
-        parts: [{ text: escapedMessage }]
-      });
+      this.addToHistory("model", escapedMessage);
 
-      this.saveChatHistory();
       return escapedMessage;
     } catch (error) {
       this.logError(error, { type: 'generateResponse' });
       throw error;
     }
   }
+
   async ImageToTextAI(imageUrl, messageContent = "") {
     try {
-      // Tải hình ảnh
       const response = await fetch(imageUrl);
       const imageBuffer = await response.arrayBuffer();
       
-      // Tạo đối tượng file từ buffer
       const imageFile = {
         inlineData: {
           data: Buffer.from(imageBuffer).toString('base64'),
@@ -106,7 +121,6 @@ class GptChatService {
         }
       };
 
-      // Tạo nội dung gửi đến model
       const contents = [
         { 
           role: "user",
@@ -117,28 +131,12 @@ class GptChatService {
         }
       ];
 
-      // Gọi model
-      const result = await this.model.generateContent({
-        contents: contents,
-      });
-      
+      const result = await this.model.generateContent({ contents });
       const responseText = result.response.text();
       const escapedText = escapeMarkdown(responseText);
 
-      // Cập nhật lịch sử chat
-      this.chatHistory.push({
-        role: "user",
-        parts: [
-          { text: `[IMAGE] ${messageContent}` }
-        ]
-      });
-      
-      this.chatHistory.push({
-        role: "model",
-        parts: [{ text: escapedText }]
-      });
-      
-      this.saveChatHistory();
+      this.addToHistory("user", `[IMAGE] ${messageContent}`);
+      this.addToHistory("model", escapedText);
       
       return escapedText;
     } catch (error) {
@@ -146,14 +144,13 @@ class GptChatService {
       throw new Error(`Failed to process image: ${error.message}`);
     }
   }
+
   async VideoToTextAI(videoUrl, caption = "") {
     try {
-      // Tải video từ URL
       const response = await fetch(videoUrl);
       const videoBuffer = await response.arrayBuffer();
       const base64Video = Buffer.from(videoBuffer).toString('base64');
       
-      // Xác định MIME type
       let mimeType = response.headers.get('content-type') || 'video/mp4';
       if (mimeType === 'application/octet-stream') {
         if (videoUrl.toLowerCase().endsWith('.mp4')) {
@@ -165,19 +162,12 @@ class GptChatService {
         }
       }
 
-      // Kiểm tra kích thước video (tối đa 20MB)
-      // const maxSize = 20 * 1024 * 1024; // 20MB
-      // if (videoBuffer.byteLength > maxSize) {
-      //   throw new Error(`Video quá lớn (tối đa ${maxSize/1024/1024}MB)`);
-      // }
-
-      // Tạo nội dung gửi đến model
       const contents = {
         contents: [{
           parts: [
             {
               inlineData: {
-                mimeType: mimeType,
+                mimeType,
                 data: base64Video
               }
             },
@@ -186,25 +176,12 @@ class GptChatService {
         }]
       };
 
-      // Gọi API Gemini
       const result = await this.model.generateContent(contents);
       const responseText = result.response.text();
       const escapedText = escapeMarkdown(responseText);
 
-      // Cập nhật lịch sử chat
-      this.chatHistory.push({
-        role: "user",
-        parts: [
-          { text: `[VIDEO] ${caption}` }
-        ]
-      });
-      
-      this.chatHistory.push({
-        role: "model",
-        parts: [{ text: escapedText }]
-      });
-      
-      this.saveChatHistory();
+      this.addToHistory("user", `[VIDEO] ${caption}`);
+      this.addToHistory("model", escapedText);
       
       return escapedText;
     } catch (error) {
@@ -212,12 +189,10 @@ class GptChatService {
       throw new Error(`Failed to process video: ${error.message}`);
     }
   }
+
   async generateImage(prompt) {
     try {
-      const response = await this.genAI.getGenerativeModel({ 
-        model: this.imageModel,
-        generationConfig: this.generationConfig
-      }).generateContent({
+      const response = await this.imageModel.generateContent({
         contents: [{
           role: "user",
           parts: [{ text: prompt }]
@@ -254,27 +229,23 @@ class GptChatService {
         textResponse: textResponse.trim()
       };
     } catch (error) {
-      console.error('Image Generation Error:', error);
+      this.logError(error, { type: 'generateImage', prompt });
       return {
         success: false,
         error: error.message
       };
     }
   }
-  // Phương thức chat có tích hợp search tool
+
   async chatWithSearch(id, messageId, message) {
     try {
       const cleanedMessage = message.replace(/<@!?\d+>/g, '').trim();
       
-      this.chatHistory.push({
-        role: "user",
-        parts: [{ text: cleanedMessage }]
-      });
+      this.addToHistory("user", cleanedMessage);
 
-      // Tạo model với cấu hình search đơn giản như trong tài liệu
       const searchModel = this.genAI.getGenerativeModel({
         model: GEMINI_CONFIG.model,
-        tools: [{ googleSearch: {} }], // Đơn giản chỉ cần truyền object rỗng
+        tools: [{ googleSearch: {} }],
         generationConfig: GEMINI_CONFIG.generationConfig
       });
 
@@ -287,34 +258,14 @@ class GptChatService {
       const text = response.text();
       const escapedResponse = escapeMarkdown(text);
       
-      // Debug: log toàn bộ response
-    //   console.log('Full API response:', JSON.stringify({
-    //     text: text,
-    //     candidates: response.candidates,
-    //     usageMetadata: response.usageMetadata,
-    //     groundingMetadata: response.candidates?.[0]?.groundingMetadata
-    //   }, null, 2));
-
-      this.chatHistory.push({
-        role: "model",
-        parts: [{ text: escapedResponse }]
-      });
-
-      this.saveChatHistory();
+      this.addToHistory("model", escapedResponse);
       
       return {
         success: true,
         response: escapedResponse,
-        metadata: response.candidates?.[0]?.groundingMetadata,
-        history: this.chatHistory
+        metadata: response.candidates?.[0]?.groundingMetadata
       };
     } catch (error) {
-      console.error('Error details:', {
-        message: error.message,
-        response: error.response?.data,
-        stack: error.stack
-      });
-      
       this.logError(error, { 
         type: 'chatWithSearch',
         id,
@@ -327,12 +278,6 @@ class GptChatService {
       };
     }
   }
-
-  clearHistory() {
-    this.chatHistory = [];
-    this.saveChatHistory();
-  }
 }
-
 
 module.exports = GptChatService;

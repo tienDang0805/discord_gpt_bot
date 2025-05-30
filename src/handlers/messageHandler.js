@@ -19,7 +19,7 @@ module.exports = async (message) => {
         try {
             await message.channel.sendTyping();
             
-            // Xử lý video nếu có
+            // Xử lý video
             const videoAttachment = message.attachments.find(att => 
                 att.contentType?.startsWith('video/') || 
                 ['mp4', 'webm', 'mov'].some(ext => att.url.toLowerCase().endsWith(ext))
@@ -30,7 +30,6 @@ module.exports = async (message) => {
                     videoAttachment.url,
                     message.content.replace(/<@!?\d+>/g, '').trim()
                 );
-                
                 return await sendLongMessage(
                     message.reply.bind(message),
                     response,
@@ -38,7 +37,7 @@ module.exports = async (message) => {
                 );
             }
             
-            // Xử lý ảnh nếu có
+            // Xử lý ảnh
             const imageAttachment = message.attachments.find(att => 
                 att.contentType?.startsWith('image/')
             );
@@ -48,7 +47,6 @@ module.exports = async (message) => {
                     imageAttachment.url,
                     message.content.replace(/<@!?\d+>/g, '').trim()
                 );
-                
                 return await sendLongMessage(
                     message.reply.bind(message),
                     response,
@@ -58,8 +56,7 @@ module.exports = async (message) => {
             
             // Xử lý tin nhắn thường
             const response = await gptChatService.generateResponse(message);
-            
-            await sendLongMessage(
+            return await sendLongMessage(
                 message.reply.bind(message),
                 response,
                 { allowedMentions: { repliedUser: false } }
