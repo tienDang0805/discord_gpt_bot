@@ -5,7 +5,13 @@ module.exports = async (client) => {
   console.log(`🤖 Bot đã online với tên: ${client.user.tag}`);
   console.log(`🆔 Bot ID: ${client.user.id}`);
   console.log(`📡 Đang kết nối đến ${client.guilds.cache.size} servers`);
-
+  client.user.setPresence({
+    status: 'online',
+    activities: [{
+      name: 'Take care 💖',
+      type: 4 // CUSTOM
+    }],
+  });
   try {
     // Chuyển đổi commands sang JSON
     const commandsData = commands.map(cmd => cmd.data.toJSON());
