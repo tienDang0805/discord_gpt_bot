@@ -15,7 +15,7 @@ class GptChatService {
       model: "gemini-2.0-flash-exp-image-generation",
       generationConfig: GEMINI_CONFIG.generationConfig
     });
-    this.MAX_HISTORY_LENGTH = 20;
+    this.MAX_HISTORY_LENGTH = 100;
     this.chatHistory = this.loadChatHistory();
     this.ensureLogsDirectory();
   }
@@ -89,8 +89,6 @@ class GptChatService {
     try {
       const cleanedContent = message.content.replace(/<@!?\d+>/g, '').trim();
       
-      this.addToHistory("user", cleanedContent);
-
       const chat = this.model.startChat({
         history: this.chatHistory
       });
@@ -100,6 +98,8 @@ class GptChatService {
       const text = response.text();
       const escapedMessage = escapeMarkdown(text);
 
+      // Only add to history after successful response
+      this.addToHistory("user", cleanedContent);
       this.addToHistory("model", escapedMessage);
 
       return escapedMessage;
@@ -135,6 +135,7 @@ class GptChatService {
       const responseText = result.response.text();
       const escapedText = escapeMarkdown(responseText);
 
+      // Only add to history after successful response
       this.addToHistory("user", `[IMAGE] ${messageContent}`);
       this.addToHistory("model", escapedText);
       
@@ -180,6 +181,7 @@ class GptChatService {
       const responseText = result.response.text();
       const escapedText = escapeMarkdown(responseText);
 
+      // Only add to history after successful response
       this.addToHistory("user", `[VIDEO] ${caption}`);
       this.addToHistory("model", escapedText);
       
@@ -223,6 +225,10 @@ class GptChatService {
         };
       }
 
+      // Only add to history after successful response
+      this.addToHistory("user", `[IMAGE GENERATION] ${prompt}`);
+      this.addToHistory("model", textResponse.trim());
+
       return {
         success: true,
         imageBuffer,
@@ -241,8 +247,6 @@ class GptChatService {
     try {
       const cleanedMessage = message.replace(/<@!?\d+>/g, '').trim();
       
-      this.addToHistory("user", cleanedMessage);
-
       const searchModel = this.genAI.getGenerativeModel({
         model: GEMINI_CONFIG.model,
         tools: [{ googleSearch: {} }],
@@ -258,6 +262,8 @@ class GptChatService {
       const text = response.text();
       const escapedResponse = escapeMarkdown(text);
       
+      // Only add to history after successful response
+      this.addToHistory("user", cleanedMessage);
       this.addToHistory("model", escapedResponse);
       
       return {
