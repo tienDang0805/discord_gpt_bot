@@ -98,6 +98,7 @@ module.exports = async (interaction) => {
             await interaction.editReply('❌ Bot gặp lỗi nghiêm trọng khi tạo ảnh. Vui lòng thử lại sau!');
         }
     }
+
     if (interaction.commandName === 'speak') {
         await interaction.deferReply();
         
@@ -125,6 +126,200 @@ module.exports = async (interaction) => {
                 content: `❌ Lỗi khi tạo audio: ${error.message}`,
                 ephemeral: true
             });
+        }
+    }
+
+    // Music commands
+    if (interaction.commandName === 'play') {
+        await interaction.deferReply();
+        
+        try {
+            const { musicService } = interaction.client;
+            const voiceChannel = interaction.member?.voice?.channel;
+            const url = interaction.options.getString('url');
+                console.log("[DEBUG] URL người dùng nhập:", url); // 👈 log ra URL
+
+            if (!voiceChannel) {
+                return await interaction.editReply("❌ Bạn cần vào voice channel trước!");
+            }
+
+            if (!musicService?.play) {
+                console.error("[CRITICAL] MusicService.play không tồn tại!");
+                return await interaction.editReply("❌ Bot đang gặp lỗi hệ thống!");
+            }
+
+            const result = await musicService.play(voiceChannel, url, {
+                requestedBy: interaction.user.tag
+            });
+
+            await interaction.editReply(result.message || "🎵 Đang phát nhạc...");
+        } catch (error) {
+            console.error("[ERROR] /play failed:", error);
+            await interaction.editReply(`❌ Lỗi: ${error.message}`);
+        }
+    }
+
+    if (interaction.commandName === 'skip') {
+        await interaction.deferReply();
+        
+        try {
+            const { musicService } = interaction.client;
+            const guildId = interaction.guild.id;
+            
+            if (!musicService?.skip) {
+                console.error("[CRITICAL] MusicService.skip không tồn tại!");
+                return await interaction.editReply("❌ Bot đang gặp lỗi hệ thống!");
+            }
+
+            const result = await musicService.skip(guildId);
+            await interaction.editReply(result.message);
+        } catch (error) {
+            console.error('Skip Error:', error);
+            await interaction.editReply(`❌ Error: ${error.message}`);
+        }
+    }
+
+    if (interaction.commandName === 'stop') {
+        await interaction.deferReply();
+        
+        try {
+            const { musicService } = interaction.client;
+            const guildId = interaction.guild.id;
+            
+            if (!musicService?.stop) {
+                console.error("[CRITICAL] MusicService.stop không tồn tại!");
+                return await interaction.editReply("❌ Bot đang gặp lỗi hệ thống!");
+            }
+
+            const result = await musicService.stop(guildId);
+            await interaction.editReply(result.message);
+        } catch (error) {
+            console.error('Stop Error:', error);
+            await interaction.editReply(`❌ Error: ${error.message}`);
+        }
+    }
+
+    if (interaction.commandName === 'pause') {
+        await interaction.deferReply();
+        
+        try {
+            const { musicService } = interaction.client;
+            const guildId = interaction.guild.id;
+            
+            if (!musicService?.pause) {
+                console.error("[CRITICAL] MusicService.pause không tồn tại!");
+                return await interaction.editReply("❌ Bot đang gặp lỗi hệ thống!");
+            }
+
+            const result = await musicService.pause(guildId);
+            await interaction.editReply(result.message);
+        } catch (error) {
+            console.error('Pause Error:', error);
+            await interaction.editReply(`❌ Error: ${error.message}`);
+        }
+    }
+
+    if (interaction.commandName === 'resume') {
+        await interaction.deferReply();
+        
+        try {
+            const { musicService } = interaction.client;
+            const guildId = interaction.guild.id;
+            
+            if (!musicService?.resume) {
+                console.error("[CRITICAL] MusicService.resume không tồn tại!");
+                return await interaction.editReply("❌ Bot đang gặp lỗi hệ thống!");
+            }
+
+            const result = await musicService.resume(guildId);
+            await interaction.editReply(result.message);
+        } catch (error) {
+            console.error('Resume Error:', error);
+            await interaction.editReply(`❌ Error: ${error.message}`);
+        }
+    }
+
+    if (interaction.commandName === 'queue') {
+        await interaction.deferReply();
+        
+        try {
+            const { musicService } = interaction.client;
+            const guildId = interaction.guild.id;
+            
+            if (!musicService?.getQueue) {
+                console.error("[CRITICAL] MusicService.getQueue không tồn tại!");
+                return await interaction.editReply("❌ Bot đang gặp lỗi hệ thống!");
+            }
+
+            const { current, queue, repeatMode } = await musicService.getQueue(guildId);
+            
+            let message = `🔁 Chế độ lặp: ${repeatMode}\n`;
+            
+            if (current) {
+                message += `🎶 Đang phát: **${current.title}** (Yêu cầu bởi: ${current.requestedBy})\n\n`;
+            } else {
+                message += "🔇 Không có bài hát nào đang phát\n\n";
+            }
+            
+            if (queue.length > 0) {
+                message += "📃 Danh sách chờ:\n" + 
+                    queue.map((track, index) => 
+                        `${index + 1}. **${track.title}** (Yêu cầu bởi: ${track.requestedBy})`
+                    ).join('\n');
+            } else {
+                message += "📭 Danh sách chờ trống";
+            }
+            
+            await interaction.editReply(message);
+        } catch (error) {
+            console.error('Queue Error:', error);
+            await interaction.editReply(`❌ Error: ${error.message}`);
+        }
+    }
+
+    if (interaction.commandName === 'volume') {
+        await interaction.deferReply();
+        
+        try {
+            const { musicService } = interaction.client;
+            const guildId = interaction.guild.id;
+            const volume = interaction.options.getInteger('volume');
+            
+            if (!musicService?.setVolume) {
+                console.error("[CRITICAL] MusicService.setVolume không tồn tại!");
+                return await interaction.editReply("❌ Bot đang gặp lỗi hệ thống!");
+            }
+
+            if (volume === null || volume < 0 || volume > 100) {
+                return await interaction.editReply("❌ Volume phải từ 0 đến 100!");
+            }
+
+            const result = await musicService.setVolume(guildId, volume);
+            await interaction.editReply(result.message);
+        } catch (error) {
+            console.error('Volume Error:', error);
+            await interaction.editReply(`❌ Error: ${error.message}`);
+        }
+    }
+
+    if (interaction.commandName === 'repeat') {
+        await interaction.deferReply();
+        
+        try {
+            const { musicService } = interaction.client;
+            const guildId = interaction.guild.id;
+            const mode = interaction.options.getString('mode');
+            
+            if (!musicService?.setRepeatMode) {
+                console.error("[CRITICAL] MusicService.setRepeatMode không tồn tại!");
+                return await interaction.editReply("❌ Bot đang gặp lỗi hệ thống!");
+            }
+
+            const result = await musicService.setRepeatMode(guildId, mode);
+            await interaction.editReply(result.message);
+        } catch (error) {
+            console.error('Repeat Error:', error);
+            await interaction.editReply(`❌ Error: ${error.message}`);
         }
     }
 };

@@ -16,10 +16,11 @@ module.exports = {
     }
   },
 
-  DISCORD_INTENTS: [
+ DISCORD_INTENTS: [
     'Guilds',
     'GuildMessages',
+    'GuildVoiceStates',
     'MessageContent'
-  ]
-  
+  ],
+  MUSIC_EMBED_COLOR: 0x3d85c6
 };
