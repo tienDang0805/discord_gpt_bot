@@ -2,7 +2,8 @@ const GptChatService = require('../services/gptChatService');
 const { isReplyingToBot } = require('../utils/helpers');
 const discordClient = require('../config/discordClient');
 const { sendLongMessage } = require('../utils/messageHelper');
-
+const { createAudioPlayer, createAudioResource , StreamType, demuxProbe, joinVoiceChannel, NoSubscriberBehavior, AudioPlayerStatus, VoiceConnectionStatus, getVoiceConnection } = require('@discordjs/voice')
+const play = require('play-dl')
 const gptChatService = new GptChatService();
 
 module.exports = async (message) => {
@@ -77,4 +78,5 @@ module.exports = async (message) => {
             await message.reply(errorMessage);
         }
     }
+
 };

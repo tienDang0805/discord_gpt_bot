@@ -129,40 +129,47 @@ module.exports = [
       .addStringOption(option =>
         option.setName('url')
           .setDescription('YouTube URL to play')
-          .setRequired(true)),
-    
-
-    
-  async execute(interaction) {
-  await interaction.deferReply(); // ⚠️ LUÔN defer trước
-
-  try {
-    const { musicService } = interaction.client;
-    const voiceChannel = interaction.member?.voice?.channel;
-    const url = interaction.options.getString('url');
-
-    // Kiểm tra voice channel
-    if (!voiceChannel) {
-      return await interaction.editReply("❌ Bạn cần vào voice channel trước!");
+          .setRequired(true) // ✅ Đã set required
+      ),
+      
+    async execute(interaction) {
+      await interaction.deferReply();
+  
+      try {
+        const { musicService } = interaction.client;
+        const voiceChannel = interaction.member?.voice?.channel;
+        
+        // ⚠️ CẦN THAY ĐỔI CÁCH LẤY URL - Đây là nguyên nhân chính
+        const url = interaction.options.get('url')?.value; // 👈 Cách chính xác
+        // Hoặc:
+        // const url = interaction.options.getString('url', true); // 👈 Force required
+  
+        console.log('[DEBUG] URL received:', url); // Debug quan trọng
+  
+        if (!voiceChannel) {
+          return await interaction.editReply("❌ Bạn cần vào voice channel trước!");
+        }
+  
+        if (!musicService?.play) {
+          console.error("[CRITICAL] MusicService.play không tồn tại!");
+          return await interaction.editReply("❌ Bot đang gặp lỗi hệ thống!");
+        }
+  
+        // ✅ Thêm validate URL ngay tại đây
+        if (!url?.match(/^(https?:\/\/)/i)) {
+          return await interaction.editReply("❌ URL phải bắt đầu bằng http:// hoặc https://");
+        }
+  
+        const result = await musicService.play(voiceChannel, url.trim(), {
+          requestedBy: interaction.user.tag
+        });
+  
+        await interaction.editReply(result.message || "🎵 Đang phát nhạc...");
+      } catch (error) {
+        console.error("[ERROR] /play failed:", error);
+        await interaction.editReply(`❌ Lỗi: ${error.message.replace('undefined', 'URL không hợp lệ')}`);
+      }
     }
-
-    // Kiểm tra musicService
-    if (!musicService?.play) {
-      console.error("[CRITICAL] MusicService.play không tồn tại!");
-      return await interaction.editReply("❌ Bot đang gặp lỗi hệ thống!");
-    }
-
-    // Gọi play và xử lý kết quả
-    const result = await musicService.play(voiceChannel, url, {
-      requestedBy: interaction.user.tag
-    });
-
-    await interaction.editReply(result.message || "🎵 Đang phát nhạc...");
-  } catch (error) {
-    console.error("[ERROR] /play failed:", error);
-    await interaction.editReply(`❌ Lỗi: ${error.message}`);
-  }
-}
   },
   {
     data: new SlashCommandBuilder()

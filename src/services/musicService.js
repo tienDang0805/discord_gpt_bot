@@ -9,10 +9,9 @@ const {
   getVoiceConnection
 } = require('@discordjs/voice');
 const play = require('play-dl');
-
 play.setToken({
       youtube : {
-          cookie : "AFmmF2swRQIgUDGo-07QbZOGy7N8MLONVmJcm-gn792URljLucg6FxICIQCV_XG-WwKq5AcPNSpcfwS8-RIQWDVrnlVo6Mx_b5g9lw:QUQ3MjNmekxvSzhMZjBjbWRRbnZZTklvQU9hQnJRVE1yOWlaVWlYLXpKSVlVU3Z1a3NzRVpmMV95WFNYbVU0QlNtN1dfajZJQXZMQzZaUXpwbjlpV3JiT1liZl9MaXBkT2MtdXZoc0RQNFUtaXNFNjlnaDZSVGw1U0liR2lhOHE5R1lGNkNvSFJ1c0k0VG0waDRjaHJhd19WMlQ3WmJWRk9n"
+        cookie: process.env.YOUTUBE_COOKIE
       }
  })
 const { EventEmitter } = require('events');
@@ -77,7 +76,7 @@ class MusicService extends EventEmitter {
   }
 
   // Internal method to play a track
-async _playTrack(guildId, track, retries = 3) {
+async _playTrack(guildId, track, retries = 1) {
     if (!track || !track.url) {
         throw new Error('Invalid track object or missing URL');
     }
@@ -105,6 +104,7 @@ async _playTrack(guildId, track, retries = 3) {
 
         const abortController = new AbortController();
         const timeout = setTimeout(() => abortController.abort(), 30000);
+        console.log('[DEBUG] URL cuối cùng trước khi phát:', cleanUrl, typeof cleanUrl);
 
         const stream = await play.stream(cleanUrl, {
             discordPlayerCompatibility: true,

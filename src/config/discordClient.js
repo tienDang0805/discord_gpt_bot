@@ -3,11 +3,13 @@ const { DISCORD_INTENTS } = require('./constants');
 const MusicService = require('../services/musicService');
 
 const client = new Client({
-  intents: DISCORD_INTENTS.map(intent => GatewayIntentBits[intent])
+  intents: DISCORD_INTENTS.map(intent => GatewayIntentBits[intent]),
+  partials: ['CHANNEL', 'MESSAGE']
+
 });
 
 // Initialize music service
-client.musicService = new MusicService();
+client.musicService = new MusicService(client);
 console.log("MusicService initialized?", client.musicService); // Nếu undefined => Lỗi khởi tạo
 
 // Handle cleanup when client is destroyed
