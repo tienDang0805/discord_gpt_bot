@@ -15,6 +15,10 @@ module.exports = async (message) => {
     if (message.content === 'hi') {
         return message.reply('hi cái địt mẹ mày');
     }
+    if (message.content === 'clearLog') {
+        gptChatService.clearHistory();
+        return message.reply('Đã clear history');
+    }
 
     if (isMentioned || message.content.startsWith('!gpt')) {
         try {
