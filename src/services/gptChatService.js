@@ -1,11 +1,11 @@
 const { escapeMarkdown } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
-const { CHAT_HISTORY_FILE, GEMINI_CONFIG } = require('../config/constants');
+const { MongoClient, ServerApiVersion } = require('mongodb');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { CHAT_HISTORY_COLLECTION, GEMINI_CONFIG, DB_NAME } = require('../config/constants');
 
 class GptChatService {
   constructor() {
+    // Khởi tạo Gemini AI
     this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     this.model = this.genAI.getGenerativeModel({ 
       model: GEMINI_CONFIG.model,
@@ -15,100 +15,226 @@ class GptChatService {
       model: "gemini-2.0-flash-exp-image-generation",
       generationConfig: GEMINI_CONFIG.generationConfig
     });
-    this.MAX_HISTORY_LENGTH = 100;
-    this.chatHistory = this.loadChatHistory();
-    this.ensureLogsDirectory();
-  }
 
-  ensureLogsDirectory() {
-    const logsDir = path.join(__dirname, '../logs');
-    if (!fs.existsSync(logsDir)) {
-      fs.mkdirSync(logsDir, { recursive: true });
-    }
-  }
-
-  loadChatHistory() {
-    try {
-      if (fs.existsSync(CHAT_HISTORY_FILE)) {
-        const data = fs.readFileSync(CHAT_HISTORY_FILE, 'utf-8');
-        return JSON.parse(data);
-      }
-      return [];
-    } catch (error) {
-      console.error('Error loading chat history:', error);
-      return [];
-    }
-  }
-
-  saveChatHistory() {
-    try {
-      fs.writeFileSync(CHAT_HISTORY_FILE, JSON.stringify(this.chatHistory, null, 2));
-    } catch (error) {
-      console.error('Error saving chat history:', error);
-    }
-  }
-
-  addToHistory(role, content) {
-    // Kiểm tra trùng lặp trước khi thêm
-    const lastMessage = this.chatHistory[this.chatHistory.length - 1];
-    if (!lastMessage || lastMessage.role !== role || lastMessage.parts[0].text !== content) {
-      this.chatHistory.push({
-        role,
-        parts: [{ text: content }]
-      });
-
-      // Giới hạn lịch sử chat
-      if (this.chatHistory.length > this.MAX_HISTORY_LENGTH) {
-        this.chatHistory = this.chatHistory.slice(-this.MAX_HISTORY_LENGTH);
-      }
-
-      this.saveChatHistory();
-    }
-  }
-
-  clearHistory() {
+    // Cấu hình chat history
+    this.MAX_HISTORY_LENGTH = 300;
     this.chatHistory = [];
-    this.saveChatHistory();
-  }
-
-  logError(error, context = {}) {
-    const errorLog = {
-      timestamp: new Date().toISOString(),
-      error: error.message,
-      stack: error.stack,
-      context
-    };
     
-    fs.appendFileSync(
-      path.join(__dirname, '../logs/error.log'), 
-      JSON.stringify(errorLog) + '\n'
-    );
+    // Khởi tạo MongoDB
+    this.dbClient = null;
+    this.db = null;
+    this.initializeDB().catch(console.error);
   }
 
-  async generateResponse(message) {
+  /**
+   * Khởi tạo kết nối MongoDB Atlas
+   */
+  async initializeDB() {
     try {
-      const cleanedContent = message.content.replace(/<@!?\d+>/g, '').trim();
-      
-      const chat = this.model.startChat({
-        history: this.chatHistory
+      this.dbClient = new MongoClient(process.env.MONGODB_URI, {
+        serverApi: {
+          version: ServerApiVersion.v1,
+          strict: true,
+          deprecationErrors: true,
+        }
       });
-
-      const result = await chat.sendMessage(cleanedContent);
-      const response = await result.response;
-      const text = response.text();
-      const escapedMessage = escapeMarkdown(text);
-
-      // Only add to history after successful response
-      this.addToHistory("user", cleanedContent);
-      this.addToHistory("model", escapedMessage);
-
-      return escapedMessage;
+      
+      await this.dbClient.connect();
+      this.db = this.dbClient.db(DB_NAME);
+      
+      // Tạo index để tối ưu hiệu suất
+      await this.db.collection('error_logs').createIndex({ timestamp: 1 });
+      await this.db.collection('error_logs').createIndex({ type: 1 });
+      
+      console.log('Kết nối MongoDB Atlas thành công');
     } catch (error) {
-      this.logError(error, { type: 'generateResponse' });
+      console.error('Lỗi kết nối MongoDB:', error);
       throw error;
     }
   }
 
+  /**
+   * Tải lịch sử chat từ MongoDB
+   */
+  async loadChatHistory() {
+    try {
+      if (!this.db) await this.initializeDB();
+      
+      const collection = this.db.collection(CHAT_HISTORY_COLLECTION);
+      const historyDoc = await collection.findOne({ type: 'global_chat_history' });
+      
+      this.chatHistory = historyDoc?.messages || [];
+      return this.chatHistory;
+    } catch (error) {
+      console.error('Lỗi khi tải lịch sử chat:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Lưu lịch sử chat vào MongoDB
+   */
+  async saveChatHistory() {
+    try {
+      if (!this.db) await this.initializeDB();
+      
+      const collection = this.db.collection(CHAT_HISTORY_COLLECTION);
+      await collection.updateOne(
+        { type: 'global_chat_history' },
+        { 
+          $set: { 
+            messages: this.chatHistory,
+            updatedAt: new Date(),
+            historyLength: this.chatHistory.length
+          },
+          $setOnInsert: {
+            type: 'global_chat_history',
+            createdAt: new Date()
+          }
+        },
+        { upsert: true }
+      );
+    } catch (error) {
+      console.error('Lỗi khi lưu lịch sử chat:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Thêm tin nhắn vào lịch sử chat
+   */
+  async addToHistory(role, content) {
+    try {
+      // Kiểm tra trùng lặp trước khi thêm
+      const lastMessage = this.chatHistory[this.chatHistory.length - 1];
+      if (!lastMessage || lastMessage.role !== role || lastMessage.parts[0].text !== content) {
+        this.chatHistory.push({
+          role,
+          parts: [{ text: content }],
+        });
+
+        // Giới hạn lịch sử chat
+        if (this.chatHistory.length > this.MAX_HISTORY_LENGTH) {
+          this.chatHistory = this.chatHistory.slice(-this.MAX_HISTORY_LENGTH);
+        }
+
+        await this.saveChatHistory();
+      }
+    } catch (error) {
+      console.error('Lỗi khi thêm vào lịch sử:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Xóa lịch sử chat
+   */
+  async clearHistory() {
+    try {
+      this.chatHistory = [];
+      await this.saveChatHistory();
+      return true;
+    } catch (error) {
+      console.error('Lỗi khi xóa lịch sử:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Ghi log lỗi vào MongoDB
+   */
+  async logError(error, context = {}) {
+    try {
+      if (!this.db) await this.initializeDB();
+      
+      const errorLog = {
+        timestamp: new Date(),
+        error: error.message,
+        stack: error.stack,
+        context,
+        type: context.type || 'unknown'
+      };
+      
+      const collection = this.db.collection('error_logs');
+      await collection.insertOne(errorLog);
+    } catch (dbError) {
+      console.error('Không thể ghi log lỗi vào MongoDB:', dbError);
+      console.error('Lỗi gốc:', error);
+    }
+  }
+
+  /**
+   * Tạo phản hồi từ tin nhắn
+   */
+  async generateResponse(message) {
+    try {
+      // 1. Load history HIỆN TẠI từ DB
+      await this.loadChatHistory();
+      const cleanedContent = message.content.replace(/<@!?\d+>/g, '').trim();
+  
+      // 2. Tạo payload gửi đi (history cũ + tin nhắn mới)
+      const payload = {
+        contents: [
+          ...this.chatHistory, // History cũ
+          {
+            role: "user",
+            parts: [{ text: cleanedContent }]
+          }
+        ]
+      };
+  
+      // 3. Gửi request THỦ CÔNG (không dùng startChat)
+      const result = await this.model.generateContent(payload);
+      const response = await result.response;
+      const text = response.text();
+      const escapedMessage = escapeMarkdown(text);
+  
+      // 4. QUAN TRỌNG: Chỉ lưu tin nhắn MỚI vào history
+      await this.saveNewMessagesOnly(cleanedContent, escapedMessage);
+  
+      return escapedMessage;
+    } catch (error) {
+      await this.logError(error);
+      throw error;
+    }
+  }
+  
+  async saveNewMessagesOnly(userMsg, modelMsg) {
+    // Kiểm tra duplicate theo 2 cấp độ
+    const isUserMsgDuplicate = this.chatHistory.some(
+      msg => msg.role === "user" && msg.parts[0].text === userMsg
+    );
+    
+    const isModelMsgDuplicate = this.chatHistory.some(
+      msg => msg.role === "model" && msg.parts[0].text === modelMsg
+    );
+  
+    // Chỉ thêm nếu KHÔNG trùng
+    if (!isUserMsgDuplicate) {
+      this.chatHistory.push({
+        role: "user",
+        parts: [{ text: userMsg }]
+      });
+    }
+  
+    if (!isModelMsgDuplicate) {
+      this.chatHistory.push({
+        role: "model",
+        parts: [{ text: modelMsg }]
+      });
+    }
+  
+    // Giới hạn lịch sử
+    if (this.chatHistory.length > this.MAX_HISTORY_LENGTH) {
+      this.chatHistory = this.chatHistory.slice(-this.MAX_HISTORY_LENGTH);
+    }
+  
+    await this.saveChatHistory();
+  }
+
+  /**
+   * Phân tích hình ảnh
+   */
   async ImageToTextAI(imageUrl, messageContent = "") {
     try {
       const response = await fetch(imageUrl);
@@ -135,17 +261,22 @@ class GptChatService {
       const responseText = result.response.text();
       const escapedText = escapeMarkdown(responseText);
 
-      // Only add to history after successful response
-      this.addToHistory("user", `[IMAGE] ${messageContent}`);
-      this.addToHistory("model", escapedText);
+      await this.addToHistory("user", `[IMAGE] ${messageContent}`);
+      await this.addToHistory("model", escapedText);
       
       return escapedText;
     } catch (error) {
-      this.logError(error, { type: 'ImageToTextAI', imageUrl });
-      throw new Error(`Failed to process image: ${error.message}`);
+      await this.logError(error, { 
+        type: 'ImageToTextAI', 
+        imageUrl
+      });
+      throw new Error(`Không thể xử lý hình ảnh: ${error.message}`);
     }
   }
 
+  /**
+   * Phân tích video
+   */
   async VideoToTextAI(videoUrl, caption = "") {
     try {
       const response = await fetch(videoUrl);
@@ -181,17 +312,22 @@ class GptChatService {
       const responseText = result.response.text();
       const escapedText = escapeMarkdown(responseText);
 
-      // Only add to history after successful response
-      this.addToHistory("user", `[VIDEO] ${caption}`);
-      this.addToHistory("model", escapedText);
+      await this.addToHistory("user", `[VIDEO] ${caption}`);
+      await this.addToHistory("model", escapedText);
       
       return escapedText;
     } catch (error) {
-      this.logError(error, { type: 'VideoToTextAI', videoUrl });
-      throw new Error(`Failed to process video: ${error.message}`);
+      await this.logError(error, { 
+        type: 'VideoToTextAI', 
+        videoUrl
+      });
+      throw new Error(`Không thể xử lý video: ${error.message}`);
     }
   }
 
+  /**
+   * Tạo hình ảnh từ prompt
+   */
   async generateImage(prompt) {
     try {
       const response = await this.imageModel.generateContent({
@@ -225,9 +361,8 @@ class GptChatService {
         };
       }
 
-      // Only add to history after successful response
-      this.addToHistory("user", `[IMAGE GENERATION] ${prompt}`);
-      this.addToHistory("model", textResponse.trim());
+      await this.addToHistory("user", `[IMAGE GENERATION] ${prompt}`);
+      await this.addToHistory("model", textResponse.trim());
 
       return {
         success: true,
@@ -235,7 +370,10 @@ class GptChatService {
         textResponse: textResponse.trim()
       };
     } catch (error) {
-      this.logError(error, { type: 'generateImage', prompt });
+      await this.logError(error, { 
+        type: 'generateImage', 
+        prompt
+      });
       return {
         success: false,
         error: error.message
@@ -243,8 +381,12 @@ class GptChatService {
     }
   }
 
+  /**
+   * Chat với chức năng tìm kiếm
+   */
   async chatWithSearch(id, messageId, message) {
     try {
+      await this.loadChatHistory();
       const cleanedMessage = message.replace(/<@!?\d+>/g, '').trim();
       
       const searchModel = this.genAI.getGenerativeModel({
@@ -262,9 +404,8 @@ class GptChatService {
       const text = response.text();
       const escapedResponse = escapeMarkdown(text);
       
-      // Only add to history after successful response
-      this.addToHistory("user", cleanedMessage);
-      this.addToHistory("model", escapedResponse);
+      await this.addToHistory("user", cleanedMessage);
+      await this.addToHistory("model", escapedResponse);
       
       return {
         success: true,
@@ -272,7 +413,7 @@ class GptChatService {
         metadata: response.candidates?.[0]?.groundingMetadata
       };
     } catch (error) {
-      this.logError(error, { 
+      await this.logError(error, { 
         type: 'chatWithSearch',
         id,
         messageId
@@ -282,6 +423,20 @@ class GptChatService {
         success: false,
         error: error.message
       };
+    }
+  }
+
+  /**
+   * Đóng kết nối MongoDB
+   */
+  async closeConnection() {
+    try {
+      if (this.dbClient) {
+        await this.dbClient.close();
+        console.log('Đã đóng kết nối MongoDB');
+      }
+    } catch (error) {
+      console.error('Lỗi khi đóng kết nối MongoDB:', error);
     }
   }
 }

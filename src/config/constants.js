@@ -3,6 +3,8 @@ require('dotenv').config();
 
 module.exports = {
   CHAT_HISTORY_FILE: path.join(__dirname, '../data/chatHistory.json'),
+  CHAT_HISTORY_COLLECTION: 'chat_histories',
+  DB_NAME: 'chatWithAI',
   DISCORD_TOKEN: process.env.DISCORD_TOKEN,
   CLIENT_ID: process.env.CLIENT_ID,
   GUILD_ID: process.env.GUILD_ID,
