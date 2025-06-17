@@ -6,14 +6,35 @@ const { CHAT_HISTORY_COLLECTION, GEMINI_CONFIG, DB_NAME } = require('../config/c
 class GptChatService {
   constructor() {
     // Khởi tạo Gemini AI
+    const safetySettings = [
+      {
+        category: "HARM_CATEGORY_HARASSMENT",
+        threshold: "BLOCK_NONE",  // Changed to BLOCK_NONE to bypass filtering
+      },
+      {
+        category: "HARM_CATEGORY_HATE_SPEECH",
+        threshold: "BLOCK_NONE",  // Changed to BLOCK_NONE to bypass filtering
+      },
+      {
+        category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+        threshold: "BLOCK_NONE",
+      },
+      {
+        category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+        threshold: "BLOCK_NONE",
+      }
+    ];
     this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     this.model = this.genAI.getGenerativeModel({ 
       model: GEMINI_CONFIG.model,
-      generationConfig: GEMINI_CONFIG.generationConfig
+      generationConfig: GEMINI_CONFIG.generationConfig,
+      safetySettings: safetySettings 
+
     });
     this.imageModel = this.genAI.getGenerativeModel({ 
       model: "gemini-2.0-flash-exp-image-generation",
-      generationConfig: GEMINI_CONFIG.generationConfig
+      generationConfig: GEMINI_CONFIG.generationConfig,
+      safetySettings: safetySettings 
     });
 
     // Cấu hình chat history
