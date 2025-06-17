@@ -17,7 +17,7 @@ class GptChatService {
     });
 
     // Cấu hình chat history
-    this.MAX_HISTORY_LENGTH = 300;
+    this.MAX_HISTORY_LENGTH = 200;
     this.chatHistory = [];
     
     // Khởi tạo MongoDB
