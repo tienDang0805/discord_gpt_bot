@@ -208,7 +208,7 @@ class GptChatService {
       const result = await this.model.generateContent(payload);
       const response = await result.response;
       const text = response.text();
-      const escapedMessage = escapeMarkdown(text);
+      const escapedMessage = fullEscapeMarkdown(text);
   
       // 4. QUAN TRỌNG: Chỉ lưu tin nhắn MỚI vào history
       await this.saveNewMessagesOnly(cleanedContent, escapedMessage);
@@ -460,6 +460,20 @@ class GptChatService {
       console.error('Lỗi khi đóng kết nối MongoDB:', error);
     }
   }
+}
+function fullEscapeMarkdown(text) {
+  return text
+    .replace(/\\/g, '\\\\')  // escape backslash
+    .replace(/\*/g, '\\*')
+    .replace(/_/g, '\\_')
+    .replace(/~/g, '\\~')
+    .replace(/`/g, '\\`')
+    .replace(/\|/g, '\\|')
+    .replace(/\//g, '\\/')  // nếu bạn muốn escape dấu /
+    .replace(/>/g, '\\>')   // blockquote
+    .replace(/#/g, '\\#')   // heading
+    .replace(/\(/g, '\\(')
+    .replace(/\)/g, '\\)');
 }
 
 module.exports = GptChatService;
