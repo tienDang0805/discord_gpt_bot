@@ -2,7 +2,10 @@ const { escapeMarkdown } = require('discord.js');
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { CHAT_HISTORY_COLLECTION, GEMINI_CONFIG, DB_NAME } = require('../config/constants');
-
+const fs = require('fs');
+const path = require('path');
+const wav = require('wav');
+const {GoogleGenAI} = require("@google/genai") ;
 class GptChatService {
   constructor() {
     // Khởi tạo Gemini AI
@@ -256,44 +259,103 @@ class GptChatService {
   /**
    * Phân tích hình ảnh
    */
-  async ImageToTextAI(imageUrl, messageContent = "") {
-    try {
-      const response = await fetch(imageUrl);
-      const imageBuffer = await response.arrayBuffer();
-      
-      const imageFile = {
-        inlineData: {
-          data: Buffer.from(imageBuffer).toString('base64'),
-          mimeType: response.headers.get('content-type') || 'image/jpeg'
-        }
-      };
+ /**
+ * Phân tích hình ảnh và lưu cả hình ảnh + tin nhắn vào lịch sử
+ */
+async ImageToTextAI(imageUrl, messageContent = "") {
+  try {
+    // 1. Load history từ DB
+    await this.loadChatHistory();
+    
+    // 2. Tải và chuẩn bị hình ảnh
+    const response = await fetch(imageUrl);
+    const imageBuffer = await response.arrayBuffer();
+    
+    const imageFile = {
+      inlineData: {
+        data: Buffer.from(imageBuffer).toString('base64'),
+        mimeType: response.headers.get('content-type') || 'image/jpeg'
+      }
+    };
 
-      const contents = [
-        { 
+    // 3. Tạo payload với history cũ + tin nhắn mới + hình ảnh
+    const payload = {
+      contents: [
+        ...this.chatHistory, // History cũ
+        {
           role: "user",
           parts: [
             { text: messageContent || "Mô tả hình ảnh này" },
             imageFile
           ]
         }
-      ];
+      ]
+    };
 
-      const result = await this.model.generateContent({ contents });
-      const responseText = result.response.text();
-      const escapedText = escapeMarkdown(responseText);
+    // 4. Gửi request đến model
+    const result = await this.model.generateContent(payload);
+    const responseText = result.response.text();
+    const escapedText = fullEscapeMarkdown(responseText);
 
-      await this.addToHistory("user", `[IMAGE] ${messageContent}`);
-      await this.addToHistory("model", escapedText);
+    // 5. Lưu cả hình ảnh và tin nhắn vào history (có kiểm tra trùng lặp)
+    const userMessageWithImage = {
+      role: "user",
+      parts: [
+        { text: `[IMAGE] ${messageContent}`.trim() },
+        imageFile // Giữ nguyên hình ảnh trong history
+      ]
+    };
+
+    const modelResponse = {
+      role: "model",
+      parts: [{ text: escapedText }]
+    };
+
+    // Kiểm tra trùng lặp trước khi lưu
+    const isDuplicate = this.isMessageDuplicate(userMessageWithImage, modelResponse);
+    if (!isDuplicate) {
+      this.chatHistory.push(userMessageWithImage);
+      this.chatHistory.push(modelResponse);
       
-      return escapedText;
-    } catch (error) {
-      await this.logError(error, { 
-        type: 'ImageToTextAI', 
-        imageUrl
-      });
-      throw new Error(`Không thể xử lý hình ảnh: ${error.message}`);
+      // Giới hạn lịch sử
+      if (this.chatHistory.length > this.MAX_HISTORY_LENGTH) {
+        this.chatHistory = this.chatHistory.slice(-this.MAX_HISTORY_LENGTH);
+      }
+      
+      await this.saveChatHistory();
     }
+
+    return escapedText;
+  } catch (error) {
+    await this.logError(error, { 
+      type: 'ImageToTextAI', 
+      imageUrl
+    });
+    throw new Error(`Không thể xử lý hình ảnh: ${error.message}`);
   }
+}
+
+/**
+ * Kiểm tra tin nhắn trùng lặp trong lịch sử
+ */
+isMessageDuplicate(userMsg, modelMsg) {
+  // Kiểm tra tin nhắn người dùng
+  const isUserMsgDuplicate = this.chatHistory.some(msg => 
+    msg.role === "user" && 
+    msg.parts.some(part => 
+      part.text === userMsg.parts.find(p => p.text)?.text &&
+      (!part.inlineData || part.inlineData.data === userMsg.parts.find(p => p.inlineData)?.inlineData.data)
+    )
+  );
+  
+  // Kiểm tra tin nhắn model
+  const isModelMsgDuplicate = this.chatHistory.some(msg => 
+    msg.role === "model" && 
+    msg.parts[0].text === modelMsg.parts[0].text
+  );
+  
+  return isUserMsgDuplicate && isModelMsgDuplicate;
+}
 
   /**
    * Phân tích video
@@ -446,7 +508,74 @@ class GptChatService {
       };
     }
   }
+  async generateAudioWithContext(text, voiceName = 'Kore') {
+    try {
+      // 1. Không cần load history ở đây nữa vì đã xử lý trong generateResponse
+      
+      // 2. Tạo audio từ text nhận được
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY});
 
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash-preview-tts",
+        contents: [{ 
+          parts: [{ 
+            text: text 
+          }] 
+        }],
+        config: {
+          responseModalities: ['AUDIO'],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName }
+            },
+          },
+        },
+      });
+  
+      const data = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+      if (!data) throw new Error('Không nhận được dữ liệu audio');
+  
+      const audioBuffer = Buffer.from(data, 'base64');
+      
+      // 3. Lưu audio vào thư mục tạm
+      const tempDir = path.join(__dirname, '../../temp');
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+      
+      const fileName = `audio_${Date.now()}.wav`;
+      const filePath = path.join(tempDir, fileName);
+      
+      await new Promise((resolve, reject) => {
+        const writer = new wav.FileWriter(filePath, {
+          channels: 1,
+          sampleRate: 24000,
+          bitDepth: 16,
+        });
+  
+        writer.on('finish', resolve);
+        writer.on('error', reject);
+        writer.write(audioBuffer);
+        writer.end();
+      });
+  
+      return {
+        success: true,
+        filePath,
+        text,
+        voiceName
+      };
+    } catch (error) {
+      await this.logError(error, {
+        type: 'textToAudioAI',
+        text
+      });
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
   /**
    * Đóng kết nối MongoDB
    */

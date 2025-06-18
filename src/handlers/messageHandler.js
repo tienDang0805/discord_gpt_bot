@@ -5,6 +5,7 @@ const { sendLongMessage } = require('../utils/messageHelper');
 const { createAudioPlayer, createAudioResource , StreamType, demuxProbe, joinVoiceChannel, NoSubscriberBehavior, AudioPlayerStatus, VoiceConnectionStatus, getVoiceConnection } = require('@discordjs/voice')
 const play = require('play-dl')
 const gptChatService = new GptChatService();
+const fs = require('fs');
 
 module.exports = async (message) => {
     if (message.author.bot) return;
@@ -19,7 +20,48 @@ module.exports = async (message) => {
         gptChatService.clearHistory();
         return message.reply('Đã clear history');
     }
-
+    if (message.content.startsWith('!audio')) {
+        try {
+            const text = message.content.replace(/^!audio\s*/i, '').trim();
+            if (!text) return message.reply("Please provide text after !audio command");
+    
+            await message.channel.sendTyping();
+            
+            // 1. Đầu tiên generate response như bình thường
+            const response = await gptChatService.generateResponse({
+                ...message,
+                content: text // Chỉ gửi text không bao gồm lệnh !audio
+            });
+            
+            // 2. Dùng response text để generate audio
+            const result = await gptChatService.generateAudioWithContext(response);
+            
+            if (!result.success) {
+                return message.reply(`Failed to generate audio: ${result.error}`);
+            }
+    
+            // 3. Gửi cả text response và audio file
+            await message.reply({
+                content: `hi`,
+                files: [result.filePath]
+            });
+    
+            // Optional: Play in voice channel
+            if (message.member.voice.channel) {
+                await playInVoiceChannel(message.member.voice.channel, result.filePath);
+            }
+    
+            // Clean up temp file
+            fs.unlink(result.filePath, (err) => {
+                if (err) console.error("Error deleting temp audio file:", err);
+            });
+    
+        } catch (error) {
+            console.error("Audio command error:", error);
+            await message.reply("An error occurred while processing your audio request");
+        }
+        return;
+    }
     if (isMentioned || message.content.startsWith('!gpt')) {
         try {
             await message.channel.sendTyping();
@@ -82,5 +124,24 @@ module.exports = async (message) => {
             await message.reply(errorMessage);
         }
     }
-
+    async function playInVoiceChannel(voiceChannel, filePath) {
+        const connection = joinVoiceChannel({
+            channelId: voiceChannel.id,
+            guildId: voiceChannel.guild.id,
+            adapterCreator: voiceChannel.guild.voiceAdapterCreator,
+        });
+        
+        const resource = createAudioResource(filePath);
+        const player = createAudioPlayer();
+        
+        player.play(resource);
+        connection.subscribe(player);
+        
+        return new Promise((resolve) => {
+            player.on(AudioPlayerStatus.Idle, () => {
+                connection.destroy();
+                resolve();
+            });
+        });
+    }
 };
