@@ -9,12 +9,12 @@ module.exports = {
   CLIENT_ID: process.env.CLIENT_ID,
   GUILD_ID: process.env.GUILD_ID,
   GEMINI_CONFIG: {
-    model: "gemini-2.0-flash",
+    model: "gemini-2.5-flash",
     generationConfig: {
       temperature: 2,
       topP: 0.95,
       topK: 40,
-      maxOutputTokens: 8192
+      maxOutputTokens: 88192
     }
   },
 
