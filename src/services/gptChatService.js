@@ -6,6 +6,8 @@ const fs = require('fs');
 const path = require('path');
 const wav = require('wav');
 const {GoogleGenAI} = require("@google/genai") ;
+const { cleanContent } = require('discord.js');
+
 class GptChatService {
   constructor() {
     // Khởi tạo Gemini AI
@@ -192,35 +194,45 @@ class GptChatService {
    */
   async generateResponse(message) {
     try {
-      // 1. Load history HIỆN TẠI từ DB
       await this.loadChatHistory();
       const cleanedContent = message.content.replace(/<@!?\d+>/g, '').trim();
-  
-      // 2. Tạo payload gửi đi (history cũ + tin nhắn mới)
+
       const payload = {
         contents: [
-          ...this.chatHistory, // History cũ
-          {
-            role: "user",
-            parts: [{ text: cleanedContent }]
-          }
+          ...this.chatHistory,
+          { role: "user", parts: [{ text: cleanedContent }] }
         ]
       };
-  
-      // 3. Gửi request THỦ CÔNG (không dùng startChat)
+
       const result = await this.model.generateContent(payload);
       const response = await result.response;
       const text = response.text();
-      const escapedMessage = fullEscapeMarkdown(text);
-  
-      // 4. QUAN TRỌNG: Chỉ lưu tin nhắn MỚI vào history
-      await this.saveNewMessagesOnly(cleanedContent, escapedMessage);
-  
-      return escapedMessage;
+      
+      // FIX 1: Sử dụng hàm cleanContent của discord.js để xử lý markdown an toàn
+      const safeMessage = cleanContent(text, message.channel);
+      
+      // FIX 2: Lưu bản gốc vào history, chỉ format khi gửi đi
+      await this.saveNewMessagesOnly(cleanedContent, text);
+      
+      return safeMessage;
     } catch (error) {
       await this.logError(error);
       throw error;
     }
+  }
+
+  /**
+   * Hàm escape markdown thông minh (chỉ khi thực sự cần)
+   */
+  smartEscapeMarkdown(text) {
+    // Chỉ escape các ký tự đặc biệt khi chúng không nằm trong code block
+    if (text.startsWith('```') && text.endsWith('```')) {
+      return text; // Giữ nguyên nếu là code block
+    }
+    
+    return text
+      .replace(/(^|\s)(\*|_|~|`|>|\||#)(?=\s|$)/g, '$1\\$2')
+      .replace(/\\\\([*_~`>|#])/g, '\\$1'); // Fix double escape
   }
   
   async saveNewMessagesOnly(userMsg, modelMsg) {
