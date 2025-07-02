@@ -1,7 +1,7 @@
 const { escapeMarkdown } = require('discord.js');
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const { CHAT_HISTORY_COLLECTION, GEMINI_CONFIG, DB_NAME } = require('../config/constants');
+const { CHAT_HISTORY_COLLECTION, GEMINI_CONFIG, DB_NAME, SYSTEM_PROMPT } = require('../config/constants');
 const fs = require('fs');
 const path = require('path');
 const wav = require('wav');
@@ -33,8 +33,8 @@ class GptChatService {
     this.model = this.genAI.getGenerativeModel({ 
       model: GEMINI_CONFIG.model,
       generationConfig: GEMINI_CONFIG.generationConfig,
-      safetySettings: safetySettings 
-
+      safetySettings: safetySettings ,
+      systemInstruction: SYSTEM_PROMPT,
     });
     this.imageModel = this.genAI.getGenerativeModel({ 
       model: "gemini-2.0-flash-exp-image-generation",
@@ -487,7 +487,8 @@ isMessageDuplicate(userMsg, modelMsg) {
       const searchModel = this.genAI.getGenerativeModel({
         model: GEMINI_CONFIG.model,
         tools: [{ googleSearch: {} }],
-        generationConfig: GEMINI_CONFIG.generationConfig
+        generationConfig: GEMINI_CONFIG.generationConfig,
+        systemInstruction: SYSTEM_PROMPT // Áp dụng quy tắc và cá tính cho AI tại đây!
       });
 
       const chat = searchModel.startChat({
