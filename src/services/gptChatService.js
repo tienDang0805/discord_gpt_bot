@@ -227,7 +227,6 @@ async updateBotConfig(newConfig) {
 
   this.cachedConfig = { ...DEFAULT_CONFIG, ...finalConfig };
   
-  await this.clearHistory();
   
   return this.cachedConfig; // ✅ THÊM DÒNG NÀY
 }
@@ -239,7 +238,6 @@ async resetBotConfig() {
 
   this.cachedConfig = { ...DEFAULT_CONFIG };
 
-  await this.clearHistory();
 
   return this.cachedConfig; // ✅ THÊM DÒNG NÀY
 }
