@@ -190,4 +190,24 @@ module.exports = [
       }
     }
   },
+  {
+    data: new SlashCommandBuilder()
+      .setName('setting')
+      .setDescription('⚙️ Tùy chỉnh tính cách và giọng văn cho Em Bé Racoon.')
+      .addSubcommand(subcommand =>
+        subcommand
+          .setName('edit')
+          .setDescription('📝 Mở bảng chỉnh sửa tính cách.')
+      )
+      .addSubcommand(subcommand =>
+        subcommand
+          .setName('view')
+          .setDescription('👀 Xem các thiết lập hiện tại.')
+      )
+      .addSubcommand(subcommand =>
+        subcommand
+          .setName('reset')
+          .setDescription('🔄 Khôi phục về thiết lập gốc.')
+      ),
+  },
 ];

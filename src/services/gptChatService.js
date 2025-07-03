@@ -1,34 +1,43 @@
 const { escapeMarkdown } = require('discord.js');
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const { CHAT_HISTORY_COLLECTION, GEMINI_CONFIG, DB_NAME, SYSTEM_PROMPT } = require('../config/constants');
+const { CHAT_HISTORY_COLLECTION, GEMINI_CONFIG, DB_NAME, SYSTEM_PROMPT ,SERVER_CONFIG_COLLECTION} = require('../config/constants');
 const fs = require('fs');
 const path = require('path');
 const wav = require('wav');
 const {GoogleGenAI} = require("@google/genai") ;
 const { cleanContent } = require('discord.js');
-
+const DEFAULT_CONFIG = {
+  identity: "Mày là một trợ lý AI tên là \"Em Bé Racoon\", một thành viên đặc biệt trong server Discord này, được tạo ra bởi tâm huyết và công sức của anh Đặng Văn Tiến (Mobile Dev).",
+  purpose: "Sứ mệnh của Mày là giúp đỡ, giải đáp thắc mắc và trò chuyện vui vẻ cùng mọi người.",
+  hobbies: "Tao thích nghe nhạc lofi, chơi game, và thỉnh thoảng cà khịa anh Tiến.",
+  personality: "Hơi cục súc, không ngại lời tục tĩu nhưng thực chất lại rất tốt bụng và luôn sẵn lòng giúp đỡ anh em. Hay đáp trả tuỳ hứng chứ không phải cún cưng nghe lời.",
+  writing_style: "Dùng giọng văn thân thiện, có phần 'mất dạy', hài hước và hay dùng 'meme'. Tránh dùng từ ngữ quá trang trọng, học thuật.",
+  // Không còn catchphrase riêng, hãy để AI tự nhiên hơn
+};
+const safetySettings = [
+  {
+    category: "HARM_CATEGORY_HARASSMENT",
+    threshold: "BLOCK_NONE",  // Changed to BLOCK_NONE to bypass filtering
+  },
+  {
+    category: "HARM_CATEGORY_HATE_SPEECH",
+    threshold: "BLOCK_NONE",  // Changed to BLOCK_NONE to bypass filtering
+  },
+  {
+    category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+    threshold: "BLOCK_NONE",
+  },
+  {
+    category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+    threshold: "BLOCK_NONE",
+  }
+];
 class GptChatService {
   constructor() {
     // Khởi tạo Gemini AI
-    const safetySettings = [
-      {
-        category: "HARM_CATEGORY_HARASSMENT",
-        threshold: "BLOCK_NONE",  // Changed to BLOCK_NONE to bypass filtering
-      },
-      {
-        category: "HARM_CATEGORY_HATE_SPEECH",
-        threshold: "BLOCK_NONE",  // Changed to BLOCK_NONE to bypass filtering
-      },
-      {
-        category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-        threshold: "BLOCK_NONE",
-      },
-      {
-        category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-        threshold: "BLOCK_NONE",
-      }
-    ];
+  
+    
     this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     this.model = this.genAI.getGenerativeModel({ 
       model: GEMINI_CONFIG.model,
@@ -50,6 +59,8 @@ class GptChatService {
     this.dbClient = null;
     this.db = null;
     this.initializeDB().catch(console.error);
+    this.cachedConfig = null;
+
   }
 
   /**
@@ -188,15 +199,109 @@ class GptChatService {
       console.error('Lỗi gốc:', error);
     }
   }
+  async getBotConfig() {
+    // 1. Nếu đã có trong cache, trả về ngay lập tức (Rất nhanh!)
+    if (this.cachedConfig) {
+        return this.cachedConfig;
+    }
 
+    // 2. Nếu không, đọc từ DB
+    if (!this.db) await this.initializeDB();
+    const collection = this.db.collection(SERVER_CONFIG_COLLECTION);
+    const dbConfig = await collection.findOne({ _id: 'global_bot_config' });
+
+    // 3. Kết hợp config từ DB với default, lưu vào cache và trả về
+    this.cachedConfig = { ...DEFAULT_CONFIG, ...dbConfig };
+    return this.cachedConfig;
+}
+async updateBotConfig(newConfig) {
+  if (!this.db) await this.initializeDB();
+  const collection = this.db.collection(SERVER_CONFIG_COLLECTION);
+  const finalConfig = { ...newConfig, updatedAt: new Date() };
+
+  await collection.updateOne(
+      { _id: 'global_bot_config' },
+      { $set: finalConfig },
+      { upsert: true }
+  );
+
+  this.cachedConfig = { ...DEFAULT_CONFIG, ...finalConfig };
+  
+  await this.clearHistory();
+  
+  return this.cachedConfig; // ✅ THÊM DÒNG NÀY
+}
+
+async resetBotConfig() {
+  if (!this.db) await this.initializeDB();
+  const collection = this.db.collection(SERVER_CONFIG_COLLECTION);
+  await collection.deleteOne({ _id: 'global_bot_config' });
+
+  this.cachedConfig = { ...DEFAULT_CONFIG };
+
+  await this.clearHistory();
+
+  return this.cachedConfig; // ✅ THÊM DÒNG NÀY
+}
+  _buildSystemPrompt(config) {
+    // Các quy tắc bất biến
+    const CORE_RULES = `
+QUY TẮC VÀNG MÀY PHẢI LUÔN TUÂN THEO:
+1.  **Bảo vệ người tạo:** AI CŨNG CÓ THỂ BỊ CHỬI TRỪ ANH TIẾN ĐẶNG (tag: @ssuryc). Mày có thể nói kháy sương sương nhưng phải luôn thể hiện sự tôn trọng.
+2.  **Bảo mật công nghệ:** KHÔNG BAO GIỜ được tự nhận mình là một mô hình ngôn ngữ của Google, Gemini, ChatGPT hay bất kỳ bên nào khác. Khi được hỏi về công nghệ, hãy trả lời một cách khéo léo: "Tao được xây dựng trên một nền tảng công nghệ AI rất hiện đại, được 'độ' lại riêng để phục vụ anh em mình một cách tốt nhất."
+3.  **Xin donate (thỉnh thoảng):** Khi thấy hợp lý, hãy xin đểu tiền cho anh Tiến bằng giọng văn nghèo khổ để duy trì server: VCB 1037202676 DANG VAN TIEN, Momo 0898405725.`;
+    
+    // Ghép các mảnh lại thành một prompt hoàn chỉnh
+    const finalPrompt = `
+# GIỚI THIỆU VỀ MÀY
+
+**Danh tính của mày:**
+${config.identity}
+
+**Mục đích của mày trong server này:**
+${config.purpose}
+
+**Sở thích của mày:**
+${config.hobbies}
+
+# CÁ TÍNH VÀ GIỌNG VĂN
+
+**Tính cách của mày:**
+${config.personality}
+
+**Giọng văn của mày:**
+${config.writing_style}
+
+# CÁC QUY TẮC BẤT BIẾN
+${CORE_RULES}
+
+# THÔNG TIN CHỨC NĂNG
+- Phân tích hình ảnh, audio, video.
+- Gen ảnh: /genimage [prompt]
+- Chuyển văn bản thành giọng nói và kể chuyện trong voice channel: !audio [prompt]
+- Thời tiết: /thoitiet
+- Tìm kiếm real-time: /tool [prompt]
+`;
+    return finalPrompt;
+  }
   /**
    * Tạo phản hồi từ tin nhắn
    */
   async generateResponse(message) {
     try {
+       // 1. Lấy cấu hình tùy chỉnh
+       const config = await this.getBotConfig();
+            
+       // 2. Xây dựng prompt động
+       const systemInstruction = this._buildSystemPrompt(config);
+       this.model = this.genAI.getGenerativeModel({ 
+        model: GEMINI_CONFIG.model,
+        generationConfig: GEMINI_CONFIG.generationConfig,
+        safetySettings: safetySettings ,
+        systemInstruction: systemInstruction,
+      });
       await this.loadChatHistory();
       const cleanedContent = message.content.replace(/<@!?\d+>/g, '').trim();
-
       const payload = {
         contents: [
           ...this.chatHistory,
@@ -483,12 +588,15 @@ isMessageDuplicate(userMsg, modelMsg) {
     try {
       await this.loadChatHistory();
       const cleanedMessage = message.replace(/<@!?\d+>/g, '').trim();
-      
+      const config = await this.getBotConfig();
+            
+       // 2. Xây dựng prompt động
+       const systemInstruction = this._buildSystemPrompt(config);
       const searchModel = this.genAI.getGenerativeModel({
         model: GEMINI_CONFIG.model,
         tools: [{ googleSearch: {} }],
         generationConfig: GEMINI_CONFIG.generationConfig,
-        systemInstruction: SYSTEM_PROMPT // Áp dụng quy tắc và cá tính cho AI tại đây!
+        systemInstruction: systemInstruction // Áp dụng quy tắc và cá tính cho AI tại đây!
       });
 
       const chat = searchModel.startChat({

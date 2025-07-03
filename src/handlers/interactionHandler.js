@@ -3,6 +3,8 @@ const GptChatService = require('../services/gptChatService');
 const ImageGenerationService = require('../services/imageGenerationService');
 const { sendLongMessage } = require('../utils/messageHelper');
 const TextToAudioService = require('../services/textToAudioService');
+const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder } = require('discord.js');
+
 
 module.exports = async (interaction) => {
     if (!interaction.isChatInputCommand()) return;
@@ -322,4 +324,67 @@ module.exports = async (interaction) => {
             await interaction.editReply(`❌ Error: ${error.message}`);
         }
     }
+    if (interaction.commandName === 'setting') {
+        const gptChatService = new GptChatService();
+        const subcommand = interaction.options.getSubcommand();
+
+        if (subcommand === 'edit') {
+            try {
+                const config = await gptChatService.getBotConfig();
+                const modal = new ModalBuilder()
+                    .setCustomId('personality_modal_v2') // Đổi ID để tránh xung đột
+                    .setTitle('Bảng Điều Khiển Nhân Cách AI');
+
+                // TẠO CÁC Ô NHẬP LIỆU MỚI
+                const identityInput = new TextInputBuilder().setCustomId('identity_input').setLabel("Danh tính (Bot là ai?)").setStyle(TextInputStyle.Paragraph).setValue(config.identity);
+                const purposeInput = new TextInputBuilder().setCustomId('purpose_input').setLabel("Mục đích (Bot làm gì?)").setStyle(TextInputStyle.Paragraph).setValue(config.purpose);
+                const hobbiesInput = new TextInputBuilder().setCustomId('hobbies_input').setLabel("Sở thích (Bot thích gì?)").setStyle(TextInputStyle.Paragraph).setValue(config.hobbies);
+                const personalityInput = new TextInputBuilder().setCustomId('personality_input').setLabel("Tính cách (Hành vi)").setStyle(TextInputStyle.Paragraph).setValue(config.personality);
+                const styleInput = new TextInputBuilder().setCustomId('style_input').setLabel("Giọng văn (Cách nói chuyện)").setStyle(TextInputStyle.Paragraph).setValue(config.writing_style);
+                
+                // Modal chỉ cho phép 5 ActionRow
+                modal.addComponents(
+                    new ActionRowBuilder().addComponents(identityInput),
+                    new ActionRowBuilder().addComponents(purposeInput),
+                    new ActionRowBuilder().addComponents(hobbiesInput),
+                    new ActionRowBuilder().addComponents(personalityInput),
+                    new ActionRowBuilder().addComponents(styleInput)
+                );
+                
+                await interaction.showModal(modal);
+            } catch (error) { /* ... xử lý lỗi ... */ }
+
+        } else if (subcommand === 'view') {
+            await interaction.deferReply(); // Công khai
+            const config = await gptChatService.getBotConfig();
+            
+            const embed = new EmbedBuilder()
+                .setColor(0x3d85c6)
+                .setTitle('👀 Nhân cách hiện tại của AI')
+                .setDescription(`Yêu cầu bởi: ${interaction.user}`)
+                .addFields(
+                    { name: '📜 Danh tính', value: `\`\`\`${config.identity}\`\`\`` },
+                    { name: '🎯 Mục đích', value: `\`\`\`${config.purpose}\`\`\`` },
+                    { name: '🎨 Sở thích', value: `\`\`\`${config.hobbies}\`\`\`` },
+                    { name: '👤 Tính cách', value: `\`\`\`${config.personality}\`\`\`` },
+                    { name: '✍️ Giọng văn', value: `\`\`\`${config.writing_style}\`\`\`` }
+                )
+                .setTimestamp();
+                
+            await interaction.editReply({ embeds: [embed] });
+
+        } else if (subcommand === 'reset') {
+            await interaction.deferReply();
+            await gptChatService.resetBotConfig();
+            
+            const embed = new EmbedBuilder()
+                .setColor(0xFFA500)
+                .setTitle('🔄 Nhân cách AI đã được reset!')
+                .setDescription(`Người thực hiện: ${interaction.user}\n\nĐã quay về cấu hình mặc định và xóa sạch bộ nhớ.`)
+                .setTimestamp();
+
+            await interaction.editReply({ embeds: [embed] });
+        }
+    }
+    
 };
