@@ -288,22 +288,26 @@ ${CORE_RULES}
     try {
        // 1. Lấy cấu hình tùy chỉnh
        const config = await this.getBotConfig();
-            
+      console.log("config",config)
        // 2. Xây dựng prompt động
        const systemInstruction = this._buildSystemPrompt(config);
-       this.model = this.genAI.getGenerativeModel({ 
-        model: GEMINI_CONFIG.model,
-        generationConfig: GEMINI_CONFIG.generationConfig,
-        safetySettings: safetySettings ,
-        systemInstruction: systemInstruction,
-      });
+       console.log("systemInstruction",systemInstruction)
+      //  this.model = this.genAI.getGenerativeModel({ 
+      //   model: GEMINI_CONFIG.model,
+      //   generationConfig: GEMINI_CONFIG.generationConfig,
+      //   safetySettings: safetySettings ,
+      //   systemInstruction: systemInstruction,
+      // });
       await this.loadChatHistory();
       const cleanedContent = message.content.replace(/<@!?\d+>/g, '').trim();
       const payload = {
         contents: [
           ...this.chatHistory,
           { role: "user", parts: [{ text: cleanedContent }] }
-        ]
+        ],
+        systemInstruction: {
+          parts: [{ text: systemInstruction }]
+        }
       };
 
       const result = await this.model.generateContent(payload);
@@ -723,4 +727,4 @@ function fullEscapeMarkdown(text) {
     .replace(/\)/g, '\\)');
 }
 
-module.exports = GptChatService;
+module.exports = new GptChatService();

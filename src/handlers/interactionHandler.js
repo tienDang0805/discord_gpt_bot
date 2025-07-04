@@ -9,7 +9,6 @@ const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedB
 module.exports = async (interaction) => {
     if (!interaction.isChatInputCommand()) return;
 
-    const gptChatService = new GptChatService();
     const imageGenService = new ImageGenerationService();
     const textToAudioService = new TextToAudioService();
 
@@ -32,7 +31,7 @@ module.exports = async (interaction) => {
                 return await interaction.editReply('Vui lòng cung cấp từ khóa tìm kiếm!');
             }
 
-            const result = await gptChatService.chatWithSearch(
+            const result = await GptChatService.chatWithSearch(
                 interaction.user.id,
                 interaction.id,
                 searchQuery
@@ -325,12 +324,11 @@ module.exports = async (interaction) => {
         }
     }
     if (interaction.commandName === 'setting') {
-        const gptChatService = new GptChatService();
         const subcommand = interaction.options.getSubcommand();
 
         if (subcommand === 'edit') {
             try {
-                const config = await gptChatService.getBotConfig();
+                const config = await GptChatService.getBotConfig();
                 const modal = new ModalBuilder()
                     .setCustomId('personality_modal_v2') // Đổi ID để tránh xung đột
                     .setTitle('Bảng Điều Khiển Nhân Cách AI');
@@ -356,7 +354,7 @@ module.exports = async (interaction) => {
 
         } else if (subcommand === 'view') {
             await interaction.deferReply(); // Công khai
-            const config = await gptChatService.getBotConfig();
+            const config = await GptChatService.getBotConfig();
             
             const embed = new EmbedBuilder()
                 .setColor(0x3d85c6)
@@ -375,7 +373,7 @@ module.exports = async (interaction) => {
 
         } else if (subcommand === 'reset') {
             await interaction.deferReply();
-            await gptChatService.resetBotConfig();
+            await GptChatService.resetBotConfig();
             
             const embed = new EmbedBuilder()
                 .setColor(0xFFA500)

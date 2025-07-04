@@ -4,7 +4,6 @@ const discordClient = require('../config/discordClient');
 const { sendLongMessage } = require('../utils/messageHelper');
 const { createAudioPlayer, createAudioResource , StreamType, demuxProbe, joinVoiceChannel, NoSubscriberBehavior, AudioPlayerStatus, VoiceConnectionStatus, getVoiceConnection } = require('@discordjs/voice')
 const play = require('play-dl')
-const gptChatService = new GptChatService();
 const fs = require('fs');
 
 module.exports = async (message) => {
@@ -17,7 +16,7 @@ module.exports = async (message) => {
         return message.reply('hi cái địt mẹ mày');
     }
     if (message.content === 'clearLog') {
-        gptChatService.clearHistory();
+        GptChatService.clearHistory();
         return message.reply('Đã clear history');
     }
     if (message.content.startsWith('!audio')) {
@@ -28,13 +27,13 @@ module.exports = async (message) => {
             await message.channel.sendTyping();
             
             // 1. Đầu tiên generate response như bình thường
-            const response = await gptChatService.generateResponse({
+            const response = await GptChatService.generateResponse({
                 ...message,
                 content: text // Chỉ gửi text không bao gồm lệnh !audio
             });
             
             // 2. Dùng response text để generate audio
-            const result = await gptChatService.generateAudioWithContext(response);
+            const result = await GptChatService.generateAudioWithContext(response);
             
             if (!result.success) {
                 return message.reply(`Failed to generate audio: ${result.error}`);
@@ -73,7 +72,7 @@ module.exports = async (message) => {
             );
             
             if (videoAttachment) {
-                const response = await gptChatService.VideoToTextAI(
+                const response = await GptChatService.VideoToTextAI(
                     videoAttachment.url,
                     message.content.replace(/<@!?\d+>/g, '').trim()
                 );
@@ -90,7 +89,7 @@ module.exports = async (message) => {
             );
             
             if (imageAttachment) {
-                const response = await gptChatService.ImageToTextAI(
+                const response = await GptChatService.ImageToTextAI(
                     imageAttachment.url,
                     message.content.replace(/<@!?\d+>/g, '').trim()
                 );
@@ -102,7 +101,7 @@ module.exports = async (message) => {
             }
             
             // Xử lý tin nhắn thường
-            const response = await gptChatService.generateResponse(message);
+            const response = await GptChatService.generateResponse(message);
             return await sendLongMessage(
                 message.reply.bind(message),
                 response,

@@ -33,11 +33,10 @@ module.exports = [
     console.log('✅ Tool command triggered!'); // Thêm dòng này để kiểm tra
 
       await interaction.deferReply();
-      const gptChatService = new GptChatService();
       const query = interaction.options.getString('query');
 
       try {
-        const result = await gptChatService.chatWithSearch(
+        const result = await GptChatService.chatWithSearch(
           interaction.user.id,
           interaction.id,
           query
