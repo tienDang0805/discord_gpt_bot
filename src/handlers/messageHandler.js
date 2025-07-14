@@ -19,6 +19,12 @@ module.exports = async (message) => {
         GptChatService.clearHistory();
         return message.reply('Đã clear history');
     }
+    const lowerCaseContent = message.content.toLowerCase();
+    if (lowerCaseContent.includes('phep mau') || 
+        lowerCaseContent.includes('phép màu') || 
+        lowerCaseContent.includes('phepmau')) { // "phepmao" cũng được thêm vào để bắt lỗi đánh máy nếu có
+        return message.reply('có cái lồn phép màu làm đi thằng mọi');
+    }
     if (message.content.startsWith('!audio')) {
         try {
             const text = message.content.replace(/^!audio\s*/i, '').trim();
