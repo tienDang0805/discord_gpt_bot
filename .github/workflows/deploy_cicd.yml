@@ -57,31 +57,35 @@ jobs:
             npm install --production
 
             # Tạo hoặc cập nhật file .env trên server bằng cách sử dụng các GitHub Secrets
-            echo "DISCORD_CHANNEL_ID=${{ secrets.DISCORD_CHANNEL_ID }}" >> .env
+            echo "DISCORD_CHANNEL_ID=${{ secrets.DISCORD_CHANNEL_ID }}" >> src/.env
 
             # Khởi động lại bot bằng PM2
             # 'pm2 reload' sẽ reload nếu bot đang chạy; '|| pm2 start' sẽ chạy bot nếu nó chưa chạy
             pm2 save # Lưu trạng thái các tiến trình PM2
-            pm2 reload racoon-8d-bot || pm2 start index.js --name "racoon-8d-bot"
+            pm2 reload racoon-discord  || pm2 start index.js --name "racoon-discord"
             echo "Bot đã được triển khai và khởi động lại thành công!"
             cat << 'EOF_NODE_SCRIPT' > send_deploy_notification.js
             const { Client, GatewayIntentBits } = require("discord.js");
             const dotenv = require("dotenv");
-            dotenv.config();
+            // RẤT QUAN TRỌNG: Chỉ định đường dẫn tới file .env nếu nó không ở thư mục gốc
+            dotenv.config({ path: './src/.env' });
 
             const token = process.env.DISCORD_TOKEN;
             const channelId = process.env.DISCORD_CHANNEL_ID;
-            const guildId = process.env.GUILD_ID; // Cần thiết để tìm kênh trong guild
+            const guildId = process.env.GUILD_ID;
 
-            // Kiểm tra các biến môi trường cần thiết
             if (!token || !channelId || !guildId) {
                 console.error("Lỗi: Thiếu một trong các biến DISCORD_TOKEN, DISCORD_CHANNEL_ID, hoặc GUILD_ID trong .env.");
+                // Thêm log chi tiết hơn để debug
+                console.error(`Token: ${token ? 'Có' : 'Không'}`);
+                console.error(`Channel ID: ${channelId ? 'Có' : 'Không'}`);
+                console.error(`Guild ID: ${guildId ? 'Có' : 'Không'}`);
                 process.exit(1);
             }
 
             const client = new Client({
                 intents: [
-                    GatewayIntentBits.Guilds, // Bắt buộc để truy cập guild và kênh
+                    GatewayIntentBits.Guilds,
                     GatewayIntentBits.GuildMessages,
                     GatewayIntentBits.MessageContent
                 ]
@@ -96,7 +100,7 @@ jobs:
                         return;
                     }
                     const channel = guild.channels.cache.get(channelId);
-                    if (channel && channel.isTextBased()) { // Kiểm tra xem kênh có phải là kênh văn bản không
+                    if (channel && channel.isTextBased()) {
                         const commitSha = process.env.GITHUB_SHA ? process.env.GITHUB_SHA.substring(0, 7) : "N/A";
                         const commitUrl = `https://github.com/${process.env.GITHUB_REPOSITORY}/commit/${process.env.GITHUB_SHA}`;
                         const repositoryUrl = `https://github.com/${process.env.GITHUB_REPOSITORY}`;
@@ -116,14 +120,14 @@ jobs:
                 } catch (error) {
                     console.error("Lỗi khi gửi tin nhắn Discord:", error.message || error);
                 } finally {
-                    client.destroy(); // Đảm bảo client ngắt kết nối sau khi hoàn thành
-                    process.exit(0); // Kết thúc tiến trình Node.js
+                    client.destroy();
+                    process.exit(0);
                 }
             });
 
             client.on("error", (error) => {
                 console.error("Lỗi client Discord:", error);
-                process.exit(1); // Thoát với lỗi nếu client gặp sự cố
+                process.exit(1);
             });
 
             client.login(token).catch(err => {
@@ -132,11 +136,8 @@ jobs:
             });
             EOF_NODE_SCRIPT
 
-            # Chạy script gửi thông báo.
-            # Đợi một chút để bot chính có thời gian khởi động lại hoàn toàn.
             sleep 5
-            node ./send_deploy_notification.js
+            node ./send_deploy_notification.js || { echo "Lỗi: Không thể chạy script gửi thông báo Discord."; exit 1; }
 
-            # Xóa script tạm thời sau khi dùng xong
-            rm send_deploy_notification.js
+            rm send_deploy_notification.js || { echo "Cảnh báo: Không thể xóa script gửi thông báo tạm thời."; }
             
