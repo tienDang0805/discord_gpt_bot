@@ -1,135 +1,67 @@
 # .github/workflows/deploy.yml
-name: Deploy Discord Bot
+name: Deploy Discord Bot # Tên của luồng công việc này, sẽ hiển thị trong tab 'Actions'
 
+# Kích hoạt luồng công việc này mỗi khi có code được đẩy lên nhánh 'main'
 on:
   push:
     branches:
       - main
 
+# Định nghĩa một công việc (job) duy nhất có tên 'deploy'
 jobs:
   deploy:
+    # Công việc này sẽ chạy trên một máy ảo Ubuntu mới tinh do GitHub cung cấp
     runs-on: ubuntu-latest
 
+    # Các bước (steps) định nghĩa chuỗi các hành động cần thực hiện
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Checkout code # Bước 1: Tải mã nguồn từ kho chứa GitHub của bạn
+        uses: actions/checkout@v4 # Sử dụng action có sẵn để tải code
 
-      # KHÔNG CẦN CÀI ĐẶT NODE.JS TRÊN GITHUB ACTIONS RUNNER NỮA
-      # Vì các lệnh npm/node/pm2 sẽ chạy TRÊN SERVER của bạn, không phải trên máy ảo GitHub Actions này.
-      # Bỏ qua bước 'Set up Node.js environment' và 'Install Node.js dependencies' trên GitHub Actions runner.
-      # Lý do: Bạn nói đã cài đặt sẵn Node.js trên server.
-
-      - name: Deploy to Server via SSH
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Set up Node.js environment # Bước 2: Cài đặt Node.js trên máy ảo GitHub Actions
+        uses: actions/setup-node@v4
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            # --- Cài đặt môi trường Node.js (nếu dùng NVM) ---
-            # Đây là phần quan trọng để khắc phục lỗi 'command not found'
-            # Giả định NVM được cài đặt cho user của bạn trong ~/.nvm
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-            [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion" # This loads nvm bash_completion
-            # Đảm bảo Node.js và npm đúng phiên bản và có trong PATH
-            nvm use 20 # Thay '20' bằng phiên bản Node.js bạn đã cài trên server (ví dụ '18' hoặc '22')
+          node-version: '22' # Chọn phiên bản Node.js (nên dùng phiên bản LTS như 18 hoặc 20)
 
-            # --- Các lệnh triển khai ---
+      - name: Install Node.js dependencies # Bước 3: Cài đặt các gói npm cần thiết cho bot của bạn
+        run: npm install
+
+      - name: Install system dependencies (FFmpeg, Opus) # Bước 4: Cài đặt các gói Linux cần thiết cho chức năng thoại
+        run: |
+          sudo apt update
+          sudo apt install -y ffmpeg libopus-dev
+
+      - name: Deploy to Server via SSH # Bước 5: Kết nối đến server của bạn và triển khai code
+        uses: appleboy/ssh-action@v1.0.3 # Sử dụng action có sẵn để kết nối SSH
+        with:
+          host: ${{ secrets.SERVER_HOST }} # Lấy địa chỉ host từ GitHub Secrets
+          username: ${{ secrets.SERVER_USERNAME }} # Lấy tên người dùng từ GitHub Secrets
+          key: ${{ secrets.SSH_PRIVATE_KEY }} # Lấy private key SSH từ GitHub Secrets
+          # Khối 'script' chứa các lệnh sẽ được thực thi trực tiếp trên server của bạn
+          script: |
             # Chuyển đến thư mục dự án bot trên server
             cd ${{ secrets.PROJECT_PATH }}
 
+            # Kiểm tra xem repository Git đã được clone chưa (lần triển khai đầu tiên so với các lần sau)
             if [ -d ".git" ]; then
               echo "Repository Git đã tồn tại, đang kéo các thay đổi mới nhất..."
-              git pull origin main
+              git pull origin main # Kéo thay đổi nếu kho mã đã tồn tại
             else
               echo "Không tìm thấy Repository Git, đang clone lần đầu..."
-              git clone https://github.com/${{ github.repository }}.git .
+              # Lấy thông tin người dùng và tên repo từ biến môi trường của GitHub Actions
+              git clone https://github.com/${{ github.repository }}.git . # Clone nếu là lần triển khai đầu tiên
             fi
 
-            # Cài đặt lại các gói Node.js trên server
+            # Cài đặt lại các gói Node.js trên server (quan trọng sau khi kéo code mới)
+            # Dùng --production để chỉ cài đặt các gói cần thiết cho môi trường chạy bot
             npm install --production
 
-            # Tạo hoặc cập nhật file .env trên server
-            echo "DISCORD_TOKEN=${{ secrets.DISCORD_TOKEN }}" > .env
-            echo "CLIENT_ID=${{ secrets.CLIENT_ID }}" >> .env
-            echo "GUILD_ID=${{ secrets.GUILD_ID }}" >> .env
-            echo "APIKEY_WEATHER=${{ secrets.APIKEY_WEATHER }}" >> .env
-            echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
-            echo "MONGODB_URI=${{ secrets.MONGODB_URI }}" >> .env
+            # Tạo hoặc cập nhật file .env trên server bằng cách sử dụng các GitHub Secrets
             echo "DISCORD_CHANNEL_ID=${{ secrets.DISCORD_CHANNEL_ID }}" >> .env
 
             # Khởi động lại bot bằng PM2
-            pm2 save
+            # 'pm2 reload' sẽ reload nếu bot đang chạy; '|| pm2 start' sẽ chạy bot nếu nó chưa chạy
+            pm2 save # Lưu trạng thái các tiến trình PM2
             pm2 reload racoon-8d-bot || pm2 start index.js --name "racoon-8d-bot"
             echo "Bot đã được triển khai và khởi động lại thành công!"
-
-            # --- Thêm logic gửi tin nhắn Discord ---
-            # Sử dụng 'EOF' marker để tạo file Node.js, tránh lỗi cú pháp
-            cat << 'EOF' > send_deploy_notification.js
-            const { Client, GatewayIntentBits } = require("discord.js");
-            const dotenv = require("dotenv");
-            dotenv.config();
-
-            const token = process.env.DISCORD_TOKEN;
-            const channelId = process.env.DISCORD_CHANNEL_ID;
-            const guildId = process.env.GUILD_ID; // Cần thiết nếu bot phải join guild trước
-
-            if (!token || !channelId || !guildId) { // Thêm guildId vào điều kiện kiểm tra
-                console.error("Thiếu một trong các biến DISCORD_TOKEN, DISCORD_CHANNEL_ID, hoặc GUILD_ID trong .env");
-                process.exit(1);
-            }
-
-            const client = new Client({
-                intents: [
-                    GatewayIntentBits.Guilds,
-                    GatewayIntentBits.GuildMessages,
-                    GatewayIntentBits.MessageContent
-                ]
-            });
-
-            client.once("ready", async () => {
-                console.log(`Đăng nhập với vai trò ${client.user.tag}!`);
-                try {
-                    const guild = client.guilds.cache.get(guildId);
-                    if (!guild) {
-                        console.error(`Không tìm thấy guild với ID: ${guildId}. Bot cần ở trong guild này.`);
-                        return;
-                    }
-                    const channel = guild.channels.cache.get(channelId);
-                    if (channel && channel.isTextBased()) {
-                        const commitSha = process.env.GITHUB_SHA ? process.env.GITHUB_SHA.substring(0, 7) : "N/A";
-                        const commitUrl = `https://github.com/${process.env.GITHUB_REPOSITORY}/commit/${process.env.GITHUB_SHA}`;
-                        const repositoryUrl = `https://github.com/${process.env.GITHUB_REPOSITORY}`;
-
-                        await channel.send(
-                            `🚀 **Triển khai thành công!**\n` +
-                            `**Bot:** ${client.user.tag}\n` +
-                            `**Phiên bản:** ${process.env.GITHUB_REF_NAME || "main"}\n` +
-                            `**Commit:** [${commitSha}](${commitUrl})\n` +
-                            `**Repository:** ${repositoryUrl}\n` +
-                            `Bot đã được cập nhật và khởi động lại thành công.`
-                        );
-                        console.log("Đã gửi tin nhắn thông báo triển khai thành công.");
-                    } else {
-                        console.error(`Không tìm thấy kênh văn bản với ID: ${channelId}. Hoặc kênh không phải là kênh văn bản.`);
-                    }
-                } catch (error) {
-                    console.error("Lỗi khi gửi tin nhắn Discord:", error);
-                } finally {
-                    client.destroy(); // Đảm bảo client ngắt kết nối sau khi gửi
-                }
-            });
-
-            client.login(token);
-            EOF
-
-            # Chạy script gửi thông báo.
-            sleep 5 # Đợi 5 giây để bot chính chắc chắn khởi động lại
-            node ./send_deploy_notification.js
-
-            # Xóa script tạm thời sau khi dùng xong
-            rm send_deploy_notification.js
-    ```
-
----
+            
