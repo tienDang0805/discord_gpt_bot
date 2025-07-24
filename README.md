@@ -49,8 +49,7 @@ This project requires **Node.js version 20 or higher**.
 
 **Recommendations:**
 
-  * **Minimum Recommended:** Node.js **16.9.0**
-  * **Strongly Recommended:** Node.js **18.x** or **20.x** (LTS versions)
+  * **Minimum Recommended:** Node.js **20**
 
 Using an LTS (Long Term Support) version is always preferable for production environments as it provides stability and ongoing support. You can check your Node.js version using `node -v`. If you need to update, consider using a Node Version Manager like `nvm`.
 
@@ -63,7 +62,7 @@ Follow these steps to set up and run the bot:
 1.  **Clone the repository:**
 
     ```bash
-    git clone <Your_Repository_URL>
+    git clone https://github.com/tienDang0805/discord_gpt_bot.git
     cd racoon_8d_bot # Navigate to your project directory
     ```
 
