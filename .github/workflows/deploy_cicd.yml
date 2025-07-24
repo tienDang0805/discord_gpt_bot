@@ -147,17 +147,15 @@ jobs:
                         const commitSha = process.env.GITHUB_SHA ? process.env.GITHUB_SHA.substring(0, 7) : "N/A";
                         const commitUrl = `https://github.com/${process.env.GITHUB_REPOSITORY}/commit/${process.env.GITHUB_SHA}`;
                         const repositoryUrl = `https://github.com/${process.env.GITHUB_REPOSITORY}`;
-                        const actor = process.env.GITHUB_ACTOR || "Unknown";
+                        const actor = "Tiến Đặng"
 
                         await channel.send(
                             `🚀 **Triển khai thành công!**\n` +
                             `**Bot:** \`${client.user.tag}\`\n` +
                             `**Phiên bản:** \`${process.env.GITHUB_REF_NAME || "main"}\`\n` +
                             `**Người triển khai:** \`${actor}\`\n` +
-                            `**Commit:** [${commitSha}](${commitUrl})\n` +
                             `**Repository:** <${repositoryUrl}>\n` +
                             `Bot đã được cập nhật và khởi động lại thành công trên server.\n` +
-                            `[Xem chi tiết hành động](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID})`
                         );
                         console.log("Đã gửi tin nhắn thông báo triển khai thành công lên Discord.");
                     } else {

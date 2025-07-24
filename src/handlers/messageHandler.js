@@ -14,7 +14,7 @@ module.exports = async (message) => {
                        (message.reference && await isReplyingToBot(message));
 
     if (message.content === 'hi') {
-        return message.reply('hi cái cc');
+        return message.reply('hi cái cc cái địt');
     }
     const lowerCaseContent = message.content.toLowerCase();
     // Biểu thức chính quy để bắt "thì?", "thi ?", "thi?", "thj?", "th1?" (không phân biệt hoa thường)
