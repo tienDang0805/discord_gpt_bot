@@ -57,9 +57,75 @@ jobs:
             npm install --production
 
             # Tạo hoặc cập nhật file .env trên server bằng cách sử dụng các GitHub Secrets
+            echo "DISCORD_CHANNEL_ID=${{ secrets.DISCORD_CHANNEL_ID }}" >> .env
 
             # Khởi động lại bot bằng PM2
             # 'pm2 reload' sẽ reload nếu bot đang chạy; '|| pm2 start' sẽ chạy bot nếu nó chưa chạy
             pm2 save # Lưu trạng thái các tiến trình PM2
             pm2 reload racoon-8d-bot || pm2 start index.js --name "racoon-8d-bot"
             echo "Bot đã được triển khai và khởi động lại thành công!"
+               echo '
+            const { Client, GatewayIntentBits } = require("discord.js");
+            const dotenv = require("dotenv");
+            dotenv.config();
+
+            const token = process.env.DISCORD_TOKEN;
+            const channelId = process.env.DISCORD_CHANNEL_ID;
+            const guildId = process.env.GUILD_ID; // Cần thiết nếu bot phải join guild trước
+
+            if (!token || !channelId) {
+                console.error("Thiếu DISCORD_TOKEN hoặc DISCORD_CHANNEL_ID trong .env");
+                process.exit(1);
+            }
+
+            const client = new Client({
+                intents: [
+                    GatewayIntentBits.Guilds,
+                    GatewayIntentBits.GuildMessages,
+                    GatewayIntentBits.MessageContent
+                ]
+            });
+
+            client.once("ready", async () => {
+                console.log(`Đăng nhập với vai trò ${client.user.tag}!`);
+                try {
+                    const guild = client.guilds.cache.get(guildId);
+                    if (!guild) {
+                        console.error(`Không tìm thấy guild với ID: ${guildId}`);
+                        return;
+                    }
+                    const channel = guild.channels.cache.get(channelId);
+                    if (channel && channel.isTextBased()) {
+                        const commitSha = process.env.GITHUB_SHA ? process.env.GITHUB_SHA.substring(0, 7) : "N/A";
+                        const commitUrl = `https://github.com/${process.env.GITHUB_REPOSITORY}/commit/${process.env.GITHUB_SHA}`;
+                        const repositoryUrl = `https://github.com/${process.env.GITHUB_REPOSITORY}`;
+
+                        await channel.send(
+                            `🚀 **Triển khai thành công!**\n` +
+                            `**Bot:** ${client.user.tag}\n` +
+                            `**Phiên bản:** ${process.env.GITHUB_REF_NAME || "main"}\n` +
+                            `**Commit:** [${commitSha}](${commitUrl})\n` +
+                            `**Repository:** ${repositoryUrl}\n` +
+                            `Bot đã được cập nhật và khởi động lại thành công.`
+                        );
+                        console.log("Đã gửi tin nhắn thông báo triển khai thành công.");
+                    } else {
+                        console.error(`Không tìm thấy kênh văn bản với ID: ${channelId}`);
+                    }
+                } catch (error) {
+                    console.error("Lỗi khi gửi tin nhắn Discord:", error);
+                } finally {
+                    client.destroy(); // Đảm bảo client ngắt kết nối sau khi gửi
+                }
+            });
+
+            client.login(token);
+            ' > send_deploy_notification.js
+
+            # Chạy script gửi thông báo. Có thể thêm sleep nếu bot cần thêm thời gian để khởi động.
+            sleep 5 # Đợi 5 giây để bot chắc chắn khởi động lại
+            node ./send_deploy_notification.js
+
+            # Xóa script tạm thời sau khi dùng xong
+            rm send_deploy_notification.js
+            ```
