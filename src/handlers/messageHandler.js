@@ -69,6 +69,7 @@ module.exports = async (message) => {
             }
     
             // 3. Gửi cả text response và audio file
+            await message.channel.send(`🤖 Đang tham gia kênh thoại và sẽ nói: "${text.substring(0, 100)}..."`); // Hiển thị 100 ký tự đầu của phản hồi
 
             // Optional: Play in voice channel
             if (message.member.voice.channel) {
