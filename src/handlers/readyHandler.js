@@ -30,7 +30,7 @@ module.exports = async (client) => {
   client.user.setPresence({
     status: 'online',
     activities: [{
-      name: 'Take care 💖',
+      name: 'Địt Mẹ Cuộc đời',
       type: 4 // CUSTOM
     }],
   });
