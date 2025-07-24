@@ -147,7 +147,7 @@ jobs:
                         const commitSha = process.env.GITHUB_SHA ? process.env.GITHUB_SHA.substring(0, 7) : "N/A";
                         const commitUrl = `https://github.com/${process.env.GITHUB_REPOSITORY}/commit/${process.env.GITHUB_SHA}`;
                         const repositoryUrl = `https://github.com/${process.env.GITHUB_REPOSITORY}`;
-                        const actor = process.env.GITHUB_ACTOR || "Unknown"; # Người thực hiện commit/workflow
+                        const actor = process.env.GITHUB_ACTOR || "Unknown";
 
                         await channel.send(
                             `🚀 **Triển khai thành công!**\n` +
