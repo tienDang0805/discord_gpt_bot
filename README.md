@@ -1,4 +1,3 @@
-Tuyệt vời\! Tôi sẽ cập nhật file `README.md` để bao gồm thông tin về yêu cầu phiên bản Node.js.
 
 -----
 
@@ -46,7 +45,7 @@ MONGODB_URI=YOUR_MONGODB_CONNECTION_STRING
 
 ### Node.js Version
 
-This project requires **Node.js version 16.9.0 or higher**.
+This project requires **Node.js version 20 or higher**.
 
 **Recommendations:**
 
