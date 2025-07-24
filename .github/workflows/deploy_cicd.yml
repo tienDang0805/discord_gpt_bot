@@ -1,0 +1,65 @@
+# .github/workflows/deploy.yml
+name: Deploy Discord Bot # Tên của luồng công việc này, sẽ hiển thị trong tab 'Actions'
+
+# Kích hoạt luồng công việc này mỗi khi có code được đẩy lên nhánh 'main'
+on:
+  push:
+    branches:
+      - main
+
+# Định nghĩa một công việc (job) duy nhất có tên 'deploy'
+jobs:
+  deploy:
+    # Công việc này sẽ chạy trên một máy ảo Ubuntu mới tinh do GitHub cung cấp
+    runs-on: ubuntu-latest
+
+    # Các bước (steps) định nghĩa chuỗi các hành động cần thực hiện
+    steps:
+      - name: Checkout code # Bước 1: Tải mã nguồn từ kho chứa GitHub của bạn
+        uses: actions/checkout@v4 # Sử dụng action có sẵn để tải code
+
+      - name: Set up Node.js environment # Bước 2: Cài đặt Node.js trên máy ảo GitHub Actions
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22' # Chọn phiên bản Node.js (nên dùng phiên bản LTS như 18 hoặc 20)
+
+      - name: Install Node.js dependencies # Bước 3: Cài đặt các gói npm cần thiết cho bot của bạn
+        run: npm install
+
+      - name: Install system dependencies (FFmpeg, Opus) # Bước 4: Cài đặt các gói Linux cần thiết cho chức năng thoại
+        run: |
+          sudo apt update
+          sudo apt install -y ffmpeg libopus-dev
+
+      - name: Deploy to Server via SSH # Bước 5: Kết nối đến server của bạn và triển khai code
+        uses: appleboy/ssh-action@v1.0.3 # Sử dụng action có sẵn để kết nối SSH
+        with:
+          host: ${{ secrets.SERVER_HOST }} # Lấy địa chỉ host từ GitHub Secrets
+          username: ${{ secrets.SERVER_USERNAME }} # Lấy tên người dùng từ GitHub Secrets
+          key: ${{ secrets.SSH_PRIVATE_KEY }} # Lấy private key SSH từ GitHub Secrets
+          # Khối 'script' chứa các lệnh sẽ được thực thi trực tiếp trên server của bạn
+          script: |
+            # Chuyển đến thư mục dự án bot trên server
+            cd ${{ secrets.PROJECT_PATH }}
+
+            # Kiểm tra xem repository Git đã được clone chưa (lần triển khai đầu tiên so với các lần sau)
+            if [ -d ".git" ]; then
+              echo "Repository Git đã tồn tại, đang kéo các thay đổi mới nhất..."
+              git pull origin main # Kéo thay đổi nếu kho mã đã tồn tại
+            else
+              echo "Không tìm thấy Repository Git, đang clone lần đầu..."
+              # Lấy thông tin người dùng và tên repo từ biến môi trường của GitHub Actions
+              git clone https://github.com/${{ github.repository }}.git . # Clone nếu là lần triển khai đầu tiên
+            fi
+
+            # Cài đặt lại các gói Node.js trên server (quan trọng sau khi kéo code mới)
+            # Dùng --production để chỉ cài đặt các gói cần thiết cho môi trường chạy bot
+            npm install --production
+
+            # Tạo hoặc cập nhật file .env trên server bằng cách sử dụng các GitHub Secrets
+
+            # Khởi động lại bot bằng PM2
+            # 'pm2 reload' sẽ reload nếu bot đang chạy; '|| pm2 start' sẽ chạy bot nếu nó chưa chạy
+            pm2 save # Lưu trạng thái các tiến trình PM2
+            pm2 reload racoon-8d-bot || pm2 start index.js --name "racoon-8d-bot"
+            echo "Bot đã được triển khai và khởi động lại thành công!"
