@@ -11,3 +11,4 @@ build/
 src/data/chatHistory.json
 temp/
 README.md
+src/README.md
