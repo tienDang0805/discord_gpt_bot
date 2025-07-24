@@ -69,16 +69,12 @@ module.exports = async (message) => {
             }
     
             // 3. Gửi cả text response và audio file
-            await message.reply({
-                content: `hi`,
-                files: [result.filePath]
-            });
-    
+
             // Optional: Play in voice channel
             if (message.member.voice.channel) {
                 await playInVoiceChannel(message.member.voice.channel, result.filePath);
             }
-    
+
             // Clean up temp file
             fs.unlink(result.filePath, (err) => {
                 if (err) console.error("Error deleting temp audio file:", err);
