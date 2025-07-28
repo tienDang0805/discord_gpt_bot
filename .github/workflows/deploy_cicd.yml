@@ -93,9 +93,17 @@ jobs:
             echo "Tạo/cập nhật file .env..."
             # Xóa nội dung cũ để tránh trùng lặp
             > src/.env 
+            echo "DISCORD_TOKEN=${{ secrets.DISCORD_TOKEN }}" >> src/.env
+            echo "CLIENT_ID=${{ secrets.CLIENT_ID }}" >> src/.env
+            echo "GUILD_ID=${{ secrets.GUILD_ID }}" >> src/.env
+            echo "APIKEY_WEATHER=${{ secrets.APIKEY_WEATHER }}" >> src/.env
+            echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> src/.env
+            echo "GOOGLE_TTS_API_KEY=${{ secrets.GOOGLE_TTS_API_KEY }}" >> src/.env
+            echo "YOUTUBE_COOKIE=${{ secrets.YOUTUBE_COOKIE }}" >> src/.env
+            echo "MONGODB_URI=${{ secrets.MONGODB_URI }}" >> src/.env
             echo "DISCORD_CHANNEL_ID=${{ secrets.DISCORD_CHANNEL_ID }}" >> src/.env
-            echo "DISCORD_TOKEN=${{ secrets.DISCORD_TOKEN }}" >> src/.env # Bổ sung TOKEN
-            echo "GUILD_ID=${{ secrets.GUILD_ID }}" >> src/.env # Bổ sung GUILD_ID
+
+
 
             # 9. Khởi động lại bot bằng PM2
             # 'pm2 reload' sẽ reload nếu bot đang chạy; '|| pm2 start' sẽ chạy bot nếu nó chưa chạy
