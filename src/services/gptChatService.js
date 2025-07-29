@@ -699,6 +699,69 @@ isMessageDuplicate(userMsg, modelMsg) {
       };
     }
   }
+  async generateQuizQuestions(numQuestions, topic, difficulty) {
+    try {
+      const prompt = `Tạo một bộ ${numQuestions} câu hỏi trắc nghiệm về chủ đề "${topic}" với độ khó "${difficulty}". Mỗi câu hỏi phải có 4 lựa chọn (A, B, C, D) và chỉ có một đáp án đúng. Vui lòng trả về kết quả dưới dạng một mảng JSON, trong đó mỗi đối tượng câu hỏi có các trường sau:
+      - "question": Chuỗi chứa nội dung câu hỏi.
+      - "answers": Mảng các chuỗi, mỗi chuỗi là một lựa chọn.
+      - "correctAnswerIndex": Số nguyên (0-3) chỉ ra chỉ số của đáp án đúng trong mảng "answers".
+
+      Ví dụ định dạng JSON mong muốn:
+      [
+        {
+          "question": "Thủ đô của Việt Nam là gì?",
+          "answers": ["Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Huế"],
+          "correctAnswerIndex": 1
+        },
+        {
+          "question": "Ai là người đã viết 'Truyện Kiều'?",
+          "answers": ["Nguyễn Du", "Hồ Xuân Hương", "Nguyễn Trãi", "Phạm Ngũ Lão"],
+          "correctAnswerIndex": 0
+        }
+      ]
+      **LƯU Ý BUỘC TUẨN THỦ** 
+      - Đảm bảo rằng các câu hỏi và câu trả lời hoàn toàn bằng tiếng Việt và phù hợp với chủ đề và độ khó yêu cầu.
+      - Đảm bảo là câu hỏi không được dài quá 255 kí tự và câu trả lừoi không được dài quá 80 kí tự.`;
+
+      const result = await this.model.generateContent({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "ARRAY",
+            items: {
+              type: "OBJECT",
+              properties: {
+                question: { type: "STRING" },
+                answers: {
+                  type: "ARRAY",
+                  items: { type: "STRING" }
+                },
+                correctAnswerIndex: { type: "NUMBER" }
+              },
+              required: ["question", "answers", "correctAnswerIndex"]
+            }
+          }
+        }
+      });
+
+      const response = await result.response;
+      const jsonString = response.text();
+      const parsedJson = JSON.parse(jsonString);
+      return parsedJson;
+
+    } catch (error) {
+      await this.logError(error, { 
+        type: 'generateQuizQuestions', 
+        numQuestions, 
+        topic,
+        difficulty
+      });
+      console.error('Lỗi khi tạo câu hỏi quiz bằng AI:', error);
+      return null;
+    }
+  }
+
   /**
    * Đóng kết nối MongoDB
    */

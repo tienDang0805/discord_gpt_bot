@@ -209,4 +209,22 @@ module.exports = [
           .setDescription('🔄 Khôi phục về thiết lập gốc.')
       ),
   },
+    // START: Thêm lệnh Quiz
+    {
+      data: new SlashCommandBuilder()
+        .setName('quiz')
+        .setDescription('🎮 Bắt đầu một trò chơi đố vui Racoon Quiz!'),
+      async execute(interaction) {
+        // Logic xử lý sẽ nằm trong interactionHandler
+      }
+    },
+    {
+      data: new SlashCommandBuilder()
+        .setName('quizcancel')
+        .setDescription('❌ Hủy bỏ trò chơi đố vui Racoon Quiz hiện tại.'),
+      async execute(interaction) {
+        // Logic xử lý sẽ nằm trong interactionHandler
+      }
+    },
+    // END: Thêm lệnh Quiz
 ];

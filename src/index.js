@@ -6,7 +6,13 @@ const discordClient = require('./config/discordClient');
 const readyHandler = require('./handlers/readyHandler');
 const messageHandler = require('./handlers/messageHandler');
 const interactionHandler = require('./handlers/interactionHandler');
-const GptChatService = require('./services/gptChatService'); // <--- THÊM DÒNG NÀY
+const GptChatService = require('./services/gptChatService');
+const QuizService = require('./services/quizService'); // THÊM DÒNG NÀY
+
+// Gán QuizService vào client để có thể truy cập từ các handler
+discordClient.quizService = QuizService;
+// Gán discordClient vào global để QuizService có thể fetch channel/user
+global.discordClient = discordClient;
 
 // Đăng ký các event handlers
 discordClient.once('ready', () => readyHandler(discordClient));
@@ -73,71 +79,16 @@ discordClient.on('interactionCreate', async (interaction) => {
                 await interaction.editReply({ content: '❌ Đã xảy ra lỗi khi lưu cấu hình.', ephemeral: true });
             }
         }
+        // Chuyển xử lý modal submit cho interactionHandler
+        interactionHandler(interaction); // Gọi interactionHandler để xử lý quiz_setup_modal
         return;
     }
 
     // 3. Xử lý bấm nút (ĐÃ CẬP NHẬT LOGIC)
     if (interaction.isButton()) {
-        let historyCleared = false;
-        let actionCompleted = false;
-
-        // Nút xác nhận xóa lịch sử
-        if (interaction.customId === 'confirm_clear_history_v2') {
-            await interaction.deferUpdate(); // Báo cho Discord biết mình đã nhận nút bấm
-            try {
-                await GptChatService.clearHistory();
-                historyCleared = true;
-                actionCompleted = true;
-            } catch (error) {
-                console.error('Lỗi khi xóa history:', error);
-                await interaction.followUp({ content: 'Có lỗi khi xóa lịch sử.', ephemeral: true });
-                return; // Dừng lại nếu lỗi
-            }
-        }
-
-        // Nút giữ lại lịch sử
-        if (interaction.customId === 'keep_history_v2') {
-            await interaction.deferUpdate();
-            historyCleared = false;
-            actionCompleted = true;
-        }
-
-        // Nếu một trong hai hành động trên đã hoàn tất
-        if (actionCompleted) {
-            // Lấy config mới nhất để hiển thị
-            const updatedConfig = await GptChatService.getBotConfig();
-            
-            // Xây dựng mô tả dựa trên hành động
-            const description = historyCleared 
-                ? `Người cập nhật: ${interaction.user}\n\n*Bộ nhớ của bot **đã được làm mới** để học lại nhân cách mới.*`
-                : `Người cập nhật: ${interaction.user}\n\n*Lịch sử trò chuyện **vẫn được giữ nguyên**.*`;
-
-            // Tạo embed công khai cuối cùng
-            const publicEmbed = new EmbedBuilder()
-                .setColor(0x00FF00)
-                .setTitle('✅ Nhân cách AI đã được cập nhật!')
-                .setDescription(description)
-                .addFields(
-                    { name: '📜 Danh tính mới', value: `\`\`\`${updatedConfig.identity}\`\`\`` },
-                    { name: '🎯 Mục đích mới', value: `\`\`\`${updatedConfig.purpose}\`\`\`` },
-                    { name: '🎨 Sở thích mới', value: `\`\`\`${updatedConfig.hobbies}\`\`\`` },
-                    { name: '👤 Tính cách mới', value: `\`\`\`${updatedConfig.personality}\`\`\`` },
-                    { name: '✍️ Giọng văn mới', value: `\`\`\`${updatedConfig.writing_style}\`\`\`` }
-                )
-                .setTimestamp();
-
-            // Gửi tin nhắn công khai vào kênh mà lệnh được gọi
-            await interaction.channel.send({ embeds: [publicEmbed] });
-
-            // Cập nhật lại tin nhắn riêng tư, báo là đã xong và xóa các nút đi
-            const privateConfirmationEmbed = new EmbedBuilder()
-                .setColor(historyCleared ? 0xFFA500 : 0x3d85c6)
-                .setTitle(historyCleared ? '🗑️ Đã xóa lịch sử thành công!' : '💾 Đã giữ lại lịch sử.')
-                .setDescription('Một thông báo công khai đã được gửi vào kênh chat.')
-                .setTimestamp();
-                
-            await interaction.editReply({ embeds: [privateConfirmationEmbed], components: [] });
-        }
+        // Chuyển xử lý nút bấm cho interactionHandler
+        interactionHandler(interaction); // Gọi interactionHandler để xử lý quiz_answer_ và các nút khác
+        return;
     }
 });
 
