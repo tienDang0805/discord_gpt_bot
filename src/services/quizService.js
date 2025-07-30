@@ -7,7 +7,7 @@ class QuizService {
         
         this.activeQuizzes = new Map();
       
-        this.gptChatService = new GptChatService();
+        this.gptChatService = GptChatService; // Sử dụng instance đã có
         this.DEFAULT_QUESTION_TIME_LIMIT_MS = 15 * 1000; // Mặc định 15 giây
     }
 

@@ -751,7 +751,9 @@ isMessageDuplicate(userMsg, modelMsg) {
             * Trường **"question"** **không được dài quá 255 ký tự**.
             * Mỗi phần tử trong mảng **"answers"** (tức mỗi lựa chọn) **không được dài quá 80 ký tự**.
 
-      4.  **Tính nguyên bản**: Các câu hỏi cần được tạo mới, độc đáo, không sao chép nguyên văn từ các nguồn đã biết.`;
+      4.  **Tính nguyên bản**: Các câu hỏi cần được tạo mới, độc đáo, không sao chép nguyên văn từ các nguồn đã biết.
+      5.  **Tính NSFW**: Không Ngại những từ ngữ dâm dục 18+ nếu có giọng văn liên quan đến dâm dục 
+            **Cụ thể** Thay các từ nhẹ thành các từ nặng hơn như : cặc, lồn , dâm thuỷ  , con đĩ nhỏ , đụ , chịch , nắc , nứng , bú lồn , .... `;
       
 
       const result = await this.model.generateContent({

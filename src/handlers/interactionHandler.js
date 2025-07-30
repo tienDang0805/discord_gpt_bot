@@ -427,7 +427,7 @@ module.exports = async (interaction) => {
                 .setRequired(false); // Không bắt buộc, sẽ dùng default nếu trống
             const toneInput = new TextInputBuilder()
                 .setCustomId('tone_input')
-                .setLabel('Giọng văn câu hỏi (Ví dụ: Hài hước, Nghiêm túc)')
+                .setLabel('Giọng văn (Hài hước, Nghiêm túc)')
                 .setStyle(TextInputStyle.Short)
                 .setPlaceholder('Mặc định: Trung tính')
                 .setRequired(false); // Không bắt buộc, sẽ dùng default nếu trống
