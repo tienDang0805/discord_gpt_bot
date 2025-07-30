@@ -1,12 +1,13 @@
+// quizService.js
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const GptChatService = require('./gptChatService'); // Import GptChatService
 
 class QuizService {
     constructor() {
-        // Lưu trữ trạng thái quiz cho từng guild
-        // Key: guildId, Value: { isActive: boolean, creatorId: string, channelId: string, currentQuestionIndex: number, questions: [], scores: { userId: { score: number, totalTime: number } }, messageId: string, questionTimer: any, questionStartTime: number, answeredUsers: Set<string>, correctlyAnsweredUsers: Set<Set<string>>, timeLimit: number, countdownInterval: any, questionMessage: Message, difficulty: string }
+        
         this.activeQuizzes = new Map();
-        this.gptChatService = GptChatService; // Sử dụng instance đã có
+      
+        this.gptChatService = new GptChatService();
         this.DEFAULT_QUESTION_TIME_LIMIT_MS = 15 * 1000; // Mặc định 15 giây
     }
 
@@ -28,14 +29,17 @@ class QuizService {
      * @param {string} topic Chủ đề của quiz.
      * @param {number} timeLimitSeconds Thời gian giới hạn cho mỗi câu hỏi (giây).
      * @param {string} difficulty Độ khó của quiz (Dễ, Trung bình, Khó, Địa ngục).
+     * @param {string} tone Giọng văn của câu hỏi (Hài hước, Nghiêm túc, Trung tính,...) // THÊM DOC VÀO ĐÂY
      * @returns {object} Kết quả của việc bắt đầu quiz.
      */
-    async startQuiz(guildId, channelId, creatorId, numQuestions, topic, timeLimitSeconds, difficulty) {
+    async startQuiz(guildId, channelId, creatorId, numQuestions, topic, timeLimitSeconds, difficulty, tone) { // THÊM 'tone' VÀO ĐÂY
         if (this.isQuizActive(guildId)) {
             return { success: false, message: '❌ Hiện đang có một trò đố vui đang diễn ra trong server này.' };
         }
 
         const actualTimeLimitMs = (timeLimitSeconds || this.DEFAULT_QUESTION_TIME_LIMIT_MS / 1000) * 1000; // Chuyển đổi sang ms
+        const finalDifficulty = difficulty || 'Trung bình'; // Đảm bảo có giá trị mặc định
+        const finalTone = tone || 'Trung tính'; // Đảm bảo có giá trị mặc định
 
         this.activeQuizzes.set(guildId, {
             isActive: true,
@@ -54,14 +58,15 @@ class QuizService {
             timeLimit: actualTimeLimitMs, // Thời gian giới hạn cho mỗi câu (ms)
             countdownInterval: null, // Interval cho bộ đếm ngược (setInterval)
             questionMessage: null, // Đối tượng tin nhắn câu hỏi để chỉnh sửa
-            difficulty: difficulty || 'Trung bình', // Lưu độ khó, mặc định Trung bình
+            difficulty: finalDifficulty, // Lưu độ khó, mặc định Trung bình
+            tone: finalTone, // LƯU GIỌNG VĂN VÀO TRẠNG THÁI QUIZ
         });
 
         const quizState = this.activeQuizzes.get(guildId);
 
         try {
-            // Gọi AI để tạo câu hỏi, truyền thêm độ khó
-            const quizData = await this.gptChatService.generateQuizQuestions(numQuestions, topic, quizState.difficulty);
+            // Gọi AI để tạo câu hỏi, truyền thêm độ khó VÀ GIỌNG VĂN
+            const quizData = await this.gptChatService.generateQuizQuestions(numQuestions, topic, quizState.difficulty, quizState.tone);
             if (!quizData || quizData.length === 0) {
                 this.activeQuizzes.delete(guildId); // Xóa trạng thái quiz nếu không tạo được câu hỏi
                 return { success: false, message: '❌ Không thể tạo câu hỏi cho chủ đề này hoặc độ khó này. Vui lòng thử chủ đề/độ khó khác.' };
@@ -72,7 +77,11 @@ class QuizService {
             // Gửi câu hỏi đầu tiên
             await this.sendNextQuestion(guildId);
 
-            return { success: true, message: `🎉 **Racoon Quiz** về chủ đề **${topic}** (Độ khó: **${quizState.difficulty}**) với ${numQuestions} câu hỏi đã bắt đầu! Mỗi câu có **${quizState.timeLimit / 1000} giây** để trả lời!` };
+            return { 
+                success: true, 
+                // CẬP NHẬT TIN NHẮN BẮT ĐẦU QUIZ ĐỂ HIỂN THỊ GIỌNG VĂN
+                message: `🎉 **Racoon Quiz** về chủ đề **${topic}** (Độ khó: **${quizState.difficulty}**, Giọng văn: **${quizState.tone}**) với ${numQuestions} câu hỏi đã bắt đầu! Mỗi câu có **${quizState.timeLimit / 1000} giây** để trả lời!` 
+            };
 
         } catch (error) {
             console.error('Lỗi khi tạo quiz:', error);
@@ -431,7 +440,8 @@ class QuizService {
         const embed = new EmbedBuilder()
             .setColor(0xFFD700) // Màu vàng cho bảng điểm
             .setTitle('🏆 Racoon Quiz Đã Kết Thúc!')
-            .setDescription(`Bảng điểm cuối cùng cho chủ đề **${quizState.topic}** (Độ khó: **${quizState.difficulty}**):\n\n${scoreBoard}\n\n${winnerTag}`)
+            // CẬP NHẬT MÔ TẢ ĐỂ HIỂN THỊ GIỌNG VĂN
+            .setDescription(`Bảng điểm cuối cùng cho chủ đề **${quizState.topic}** (Độ khó: **${quizState.difficulty}**, Giọng văn: **${quizState.tone}**):\n\n${scoreBoard}\n\n${winnerTag}`)
             .setTimestamp();
 
         await channel.send({ embeds: [embed] });
@@ -440,4 +450,8 @@ class QuizService {
     }
 }
 
+// LƯU Ý QUAN TRỌNG:
+// Nếu GptChatService là một module export một instance (module.exports = new GptChatService();)
+// thì dòng này sẽ là: module.exports = new QuizService(GptChatService);
+// Nếu GptChatService là một class và bạn muốn tạo một instance mới ở đây, thì:
 module.exports = new QuizService();

@@ -425,12 +425,19 @@ module.exports = async (interaction) => {
                 .setStyle(TextInputStyle.Short)
                 .setPlaceholder('Ví dụ: Trung bình')
                 .setRequired(false); // Không bắt buộc, sẽ dùng default nếu trống
+            const toneInput = new TextInputBuilder()
+                .setCustomId('tone_input')
+                .setLabel('Giọng văn câu hỏi (Ví dụ: Hài hước, Nghiêm túc)')
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder('Mặc định: Trung tính')
+                .setRequired(false); // Không bắt buộc, sẽ dùng default nếu trống
 
             modal.addComponents(
                 new ActionRowBuilder().addComponents(numQuestionsInput),
                 new ActionRowBuilder().addComponents(topicInput),
                 new ActionRowBuilder().addComponents(timeLimitInput),
-                new ActionRowBuilder().addComponents(difficultyInput) // Thêm input độ khó
+                new ActionRowBuilder().addComponents(difficultyInput),
+                new ActionRowBuilder().addComponents(toneInput) 
             );
 
             await interaction.showModal(modal);
@@ -504,10 +511,12 @@ module.exports = async (interaction) => {
             await interaction.deferReply(); // Defer reply công khai
             const numQuestions = parseInt(interaction.fields.getTextInputValue('num_questions_input'));
             const topic = interaction.fields.getTextInputValue('topic_input');
-            const timeLimitInput = interaction.fields.getTextInputValue('time_limit_input'); // Lấy thời gian nhập vào
-            const timeLimit = timeLimitInput ? parseInt(timeLimitInput) : 15; // Mặc định 15 giây
-            const difficultyInput = interaction.fields.getTextInputValue('difficulty_input'); // Lấy độ khó
-            const difficulty = difficultyInput ? difficultyInput.trim() : 'Trung bình'; // Mặc định Trung bình
+            const timeLimitInput = interaction.fields.getTextInputValue('time_limit_input');
+            const timeLimit = timeLimitInput ? parseInt(timeLimitInput) : 15;
+            const difficultyInput = interaction.fields.getTextInputValue('difficulty_input');
+            const difficulty = difficultyInput ? difficultyInput.trim() : 'Trung bình';
+            const toneInput = interaction.fields.getTextInputValue('tone_input'); // Lấy giá trị của trường tone
+            const tone = toneInput ? toneInput.trim() : 'Trung tính'; // Mặc định là 'Trung tính' nếu trống
 
             const guildId = interaction.guild.id;
             const channelId = interaction.channel.id;
@@ -516,21 +525,19 @@ module.exports = async (interaction) => {
             if (isNaN(numQuestions) || numQuestions < 3 || numQuestions > 10) {
                 return await interaction.editReply('❌ Số lượng câu hỏi phải là một số từ 3 đến 10.');
             }
-            if (isNaN(timeLimit) || timeLimit < 5 || timeLimit > 60) { // Giới hạn thời gian từ 5-60 giây
+            if (isNaN(timeLimit) || timeLimit < 5 || timeLimit > 60) {
                 return await interaction.editReply('❌ Thời gian cho mỗi câu phải là một số từ 5 đến 60 giây.');
             }
 
-            // Validate difficulty input
             const validDifficulties = ['Dễ', 'Trung bình', 'Khó', 'Địa ngục'];
             if (!validDifficulties.includes(difficulty)) {
                 return await interaction.editReply('❌ Độ khó không hợp lệ. Vui lòng chọn: Dễ, Trung bình, Khó, hoặc Địa ngục.');
             }
-
             try {
-                const result = await quizService.startQuiz(guildId, channelId, creatorId, numQuestions, topic, timeLimit, difficulty); // Truyền timeLimit và difficulty
+                // Truyền tone vào hàm startQuiz
+                const result = await quizService.startQuiz(guildId, channelId, creatorId, numQuestions, topic, timeLimit, difficulty, tone);
                 if (result.success) {
-                    await interaction.editReply(result.message); // Thông báo quiz bắt đầu
-                    // Câu hỏi đầu tiên sẽ được gửi bởi quizService
+                    await interaction.editReply(result.message);
                 } else {
                     await interaction.editReply(`❌ Lỗi: ${result.message}`);
                 }
