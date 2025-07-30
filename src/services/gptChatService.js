@@ -719,8 +719,9 @@ isMessageDuplicate(userMsg, modelMsg) {
           "correctAnswerIndex": 0
         }
       ]
-      **LƯU Ý BUỘC TUẨN THỦ** 
-      - **QUAN TRỌNG** :Đảm bảo tính đa dạng cho mỗi quiz chứ không được tạo câu trả lời một cách rập khuôn kiểu câu trả lời dài nhất thường đúng
+      **LƯU Ý BUỘC TUÂN THỦ** 
+      - **QUAN TRỌNG** :Đảm bảo tính đa dạng cho mỗi quiz không làm cho câu trả lời dài nhất thường đúng
+      - Đưa ra những đáp án có độ dài lớn nhất thường để đánh lừa người trả lời
       - Đảm Bảo Thông tin đúng đắn tuyệt đối của mỗi câu hỏi/ trả lời
       - Đảm bảo rằng các câu hỏi và câu trả lời hoàn toàn bằng tiếng Việt và phù hợp với chủ đề và độ khó yêu cầu.
       - Đảm bảo là câu hỏi không được dài quá 255 kí tự và câu trả lừoi không được dài quá 80 kí tự.`;
