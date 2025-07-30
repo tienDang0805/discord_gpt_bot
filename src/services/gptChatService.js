@@ -701,30 +701,55 @@ isMessageDuplicate(userMsg, modelMsg) {
   }
   async generateQuizQuestions(numQuestions, topic, difficulty) {
     try {
-      const prompt = `Tạo một bộ ${numQuestions} câu hỏi trắc nghiệm về chủ đề "${topic}" với độ khó "${difficulty}". Mỗi câu hỏi phải có 4 lựa chọn (A, B, C, D) và chỉ có một đáp án đúng. Vui lòng trả về kết quả dưới dạng một mảng JSON, trong đó mỗi đối tượng câu hỏi có các trường sau:
-      - "question": Chuỗi chứa nội dung câu hỏi.
-      - "answers": Mảng các chuỗi, mỗi chuỗi là một lựa chọn.
-      - "correctAnswerIndex": Số nguyên (0-3) chỉ ra chỉ số của đáp án đúng trong mảng "answers".
+      const prompt = `Tạo một bộ ${numQuestions} câu hỏi trắc nghiệm ĐỘC ĐÁO, THÚ VỊ và CÓ TÍNH THỬ THÁCH CAO về chủ đề **"${topic}"**.
 
-      Ví dụ định dạng JSON mong muốn:
-      [
-        {
-          "question": "Thủ đô của Việt Nam là gì?",
-          "answers": ["Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Huế"],
-          "correctAnswerIndex": 1
-        },
-        {
-          "question": "Ai là người đã viết 'Truyện Kiều'?",
-          "answers": ["Nguyễn Du", "Hồ Xuân Hương", "Nguyễn Trãi", "Phạm Ngũ Lão"],
-          "correctAnswerIndex": 0
-        }
-      ]
-      **LƯU Ý BUỘC TUÂN THỦ** 
-      - **QUAN TRỌNG** :Đảm bảo tính đa dạng cho mỗi quiz không làm cho câu trả lời dài nhất thường đúng
-      - Đưa ra những đáp án có độ dài lớn nhất thường để đánh lừa người trả lời
-      - Đảm Bảo Thông tin đúng đắn tuyệt đối của mỗi câu hỏi/ trả lời
-      - Đảm bảo rằng các câu hỏi và câu trả lời hoàn toàn bằng tiếng Việt và phù hợp với chủ đề và độ khó yêu cầu.
-      - Đảm bảo là câu hỏi không được dài quá 255 kí tự và câu trả lừoi không được dài quá 80 kí tự.`;
+**Độ khó** của các câu hỏi phải được xây dựng tỉ mỉ theo mức **"${difficulty}"**, với định nghĩa chi tiết sau:
+- **Dễ**: Kiến thức cơ bản, phổ thông, có thể suy luận trực tiếp hoặc dựa trên thông tin chung. Các lựa chọn gây nhiễu ít hoặc dễ nhận biết.
+- **Trung bình**: Yêu cầu suy luận nhẹ, kiến thức sâu hơn một chút. Có 1-2 lựa chọn gây nhiễu hợp lý, đôi khi cần kết nối các mẩu thông tin.
+- **Khó**: Kiến thức chuyên sâu, đòi hỏi ghi nhớ các chi tiết cụ thể, sự kiện, hoặc các mối quan hệ phức tạp. Các lựa chọn gây nhiễu rất sát nghĩa, dễ gây nhầm lẫn.
+- **Địa ngục**: Câu hỏi cực kỳ hóc búa, đòi hỏi kiến thức cực hiếm, khả năng phân tích và tổng hợp cao. Các lựa chọn đáp án được thiết kế để đánh lừa tối đa, khó phân biệt ngay cả với người có kiến thức tốt.
+
+Mỗi câu hỏi **BẮT BUỘC** phải có **4 lựa chọn RIÊNG BIỆT (A, B, C, D)** và **CHỈ DUY NHẤT một đáp án đúng**.
+
+Vui lòng trả về kết quả dưới dạng một **MẢNG JSON** theo cấu trúc sau. **Không được có bất kỳ văn bản giải thích nào khác ngoài JSON này**:
+[
+  {
+    "question": "Chuỗi chứa nội dung câu hỏi. (Ví dụ: Thủ đô của Việt Nam là gì?)",
+    "answers": ["Mảng các chuỗi, mỗi chuỗi là một lựa chọn. (Ví dụ: Hồ Chí Minh)", "Hà Nội", "Đà Nẵng", "Huế"],
+    "correctAnswerIndex": "Số nguyên (0-3) chỉ ra chỉ số của đáp án đúng trong mảng 'answers'. (Ví dụ: 1)"
+  }
+]
+
+**Ví dụ thực tế về định dạng JSON mong muốn:**
+
+[
+  {
+    "question": "Thủ đô của Việt Nam là gì?",
+    "answers": ["Thành phố Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Huế"],
+    "correctAnswerIndex": 1
+  },
+  {
+    "question": "Ai là người đã viết 'Truyện Kiều'?",
+    "answers": ["Nguyễn Du", "Hồ Xuân Hương", "Nguyễn Trãi", "Phạm Ngũ Lão"],
+    "correctAnswerIndex": 0
+  }
+]
+
+
+**CÁC QUY TẮC BẮT BUỘC TUÂN THỦ ĐỂ ĐẢM BẢO CHẤT LƯỢNG VÀ TÍNH THỬ THÁCH CỦA QUIZ:**
+
+1.  **Độ chính xác TUYỆT ĐỐI**: Toàn bộ thông tin trong câu hỏi và các lựa chọn đáp án phải **chính xác 100%**, có căn cứ và đáng tin cậy. Tuyệt đối không tạo ra thông tin sai lệch.
+2.  **Ngôn ngữ và Văn phong**: Tất cả câu hỏi và lựa chọn đáp án **hoàn toàn bằng tiếng Việt chuẩn, rõ ràng, súc tích**, phù hợp với ngữ cảnh và độ khó yêu cầu. Tránh các từ ngữ mơ hồ, tối nghĩa hoặc cách diễn đạt dài dòng.
+3.  **Giới hạn ký tự nghiêm ngặt**:
+      * Trường **"question"** **không được dài quá 255 ký tự**.
+      * Mỗi phần tử trong mảng **"answers"** (tức mỗi lựa chọn) **không được dài quá 80 ký tự**.
+4.  **Tính đa dạng và Đánh lừa thông minh**:
+      * **ĐẢM BẢO** rằng vị trí của đáp án đúng được phân bổ ngẫu nhiên, **không theo bất kỳ quy luật cố định nào** (ví dụ: không phải lúc nào cũng là A hoặc đáp án thứ 0).
+      * Các lựa chọn gây nhiễu phải **hợp lý và có tính thuyết phục cao**, khiến người chơi phải suy nghĩ.
+      * **QUAN TRỌNG NHẤT**: **Tuyệt đối không để đáp án đúng luôn là đáp án dài nhất**. Hãy chủ động thêm các lựa chọn gây nhiễu có độ dài lớn hơn hoặc tương đương đáp án đúng để tăng tính đánh lừa.
+      * Tránh các câu hỏi lặp lại ý tưởng, cách đặt câu hỏi, hoặc có các lựa chọn đáp án quá giống nhau trong cùng một quiz.
+5.  **Tính nguyên bản**: Các câu hỏi cần được tạo mới, độc đáo, không sao chép nguyên văn từ các nguồn đã biết.
+`;
       
 
       const result = await this.model.generateContent({
