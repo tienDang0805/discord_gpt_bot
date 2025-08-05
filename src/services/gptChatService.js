@@ -48,7 +48,8 @@ class GptChatService {
     this.imageModel = this.genAI.getGenerativeModel({ 
       model: "gemini-2.0-flash-exp-image-generation",
       generationConfig: GEMINI_CONFIG.generationConfig,
-      safetySettings: safetySettings 
+      safetySettings: safetySettings,
+      systemInstruction: SYSTEM_PROMPT,
     });
 
     // Cấu hình chat history
