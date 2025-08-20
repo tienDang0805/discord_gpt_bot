@@ -1,3 +1,4 @@
+// file: messageHandler.js
 const GptChatService = require('../services/gptChatService');
 const { isReplyingToBot } = require('../utils/helpers');
 const discordClient = require('../config/discordClient');
@@ -6,7 +7,7 @@ const { createAudioPlayer, createAudioResource , StreamType, demuxProbe, joinVoi
 const play = require('play-dl')
 const fs = require('fs');
 const ADMIN_IDS = ['448507913879945216']; // Replace with actual admin IDs
-
+const pkGameService = require('../services/PKGameService');
 module.exports = async (message) => {
     if (message.author.bot) return;
 
@@ -15,6 +16,28 @@ module.exports = async (message) => {
 
     if (message.content === 'hi') {
         return message.reply('hi cái lồn má mày');
+    }
+     if (message.content.toLowerCase() === '!pkmom') {
+        const result = pkGameService.startNewGame();
+        // Sửa lỗi: Chỉ gửi thuộc tính 'message' từ đối tượng trả về.
+        return message.reply(result.message);
+    }
+
+    // Lệnh để tham gia game
+    if (message.content.toLowerCase() === '!joinpk') {
+        const result = pkGameService.joinGame(message.author);
+        // Sửa lỗi: Tương tự, chỉ gửi thuộc tính 'message'.
+        return message.reply(result.message);
+    }
+    
+    // Xử lý khi có file ghi âm đính kèm và game đang diễn ra
+    if (message.attachments.size > 0 && pkGameService.gameSession?.status === "in-progress") {
+        const audioAttachment = message.attachments.find(att => att.contentType?.startsWith('audio/'));
+        if (audioAttachment) {
+            const result = await pkGameService.processTurn(message.author, audioAttachment);
+            // Sửa lỗi: Chỉ gửi thuộc tính 'message' từ đối tượng trả về.
+            return message.reply(result.message);
+        }
     }
     const lowerCaseContent = message.content.toLowerCase();
     // Biểu thức chính quy để bắt "thì?", "thi ?", "thi?", "thj?", "th1?" (không phân biệt hoa thường)
@@ -149,6 +172,7 @@ module.exports = async (message) => {
             await message.reply(errorMessage);
         }
     }
+    
     async function playInVoiceChannel(voiceChannel, filePath) {
         const connection = joinVoiceChannel({
             channelId: voiceChannel.id,

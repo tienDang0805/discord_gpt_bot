@@ -33,6 +33,16 @@ const safetySettings = [
     threshold: "BLOCK_NONE",
   }
 ];
+const CHAT_MODEL = {
+  model: "gemini-2.5-flash",
+  generationConfig: {
+    temperature: 0.9,
+    topK: 1,
+    topP: 1,
+  },
+  safetySettings: safetySettings,
+};
+
 class GptChatService {
   constructor() {
     // Khởi tạo Gemini AI
@@ -327,7 +337,40 @@ ${CORE_RULES}
       throw error;
     }
   }
+  async generatePKResponse(prompt) {
+    try {
+      // Clone model để không bị ảnh hưởng bởi chat history của hàm khác
+      const pkModel = this.genAI.getGenerativeModel({
+        model: CHAT_MODEL.model,
+        generationConfig: {
+          ...CHAT_MODEL.generationConfig,
+          // Cài đặt đặc biệt để buộc AI trả về JSON
+          responseMimeType: "application/json",
+        },
+        safetySettings: CHAT_MODEL.safetySettings,
+      });
 
+      const result = await pkModel.generateContent({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+      });
+      
+      const response = await result.response;
+      const text = response.text();
+      
+      // Đảm bảo kết quả là một chuỗi JSON hợp lệ
+      try {
+        JSON.parse(text);
+        return text;
+      } catch (e) {
+        console.error("AI không trả về JSON hợp lệ:", text);
+        throw new Error("AI không trả về JSON hợp lệ. Vui lòng thử lại.");
+      }
+      
+    } catch (error) {
+      await this.logError(error);
+      throw error;
+    }
+  }
   /**
    * Hàm escape markdown thông minh (chỉ khi thực sự cần)
    */
@@ -795,7 +838,40 @@ isMessageDuplicate(userMsg, modelMsg) {
       return null;
     }
   }
+  async AudioToTextAI(audioUrl, caption = "") {
+    try {
+        const response = await fetch(audioUrl);
+        const audioBuffer = await response.arrayBuffer();
+        const base64Audio = Buffer.from(audioBuffer).toString('base64');
+        
+        let mimeType = response.headers.get('content-type') || 'audio/ogg';
+        
+        const contents = {
+            contents: [{
+                parts: [
+                    {
+                        inlineData: {
+                            mimeType,
+                            data: base64Audio
+                        }
+                    },
+                    { text:"Chỉ trả về nội dung văn bản nghe được từ file audio, không thêm bất kỳ phân tích hay giải thích nào." }
+                ]
+            }]
+        };
 
+        const result = await this.model.generateContent(contents);
+        const responseText = result.response.text();
+        
+        return responseText;
+    } catch (error) {
+        await this.logError(error, { 
+            type: 'AudioToTextAI', 
+            audioUrl
+        });
+        throw new Error(`Không thể xử lý audio: ${error.message}`);
+    }
+}
   /**
    * Đóng kết nối MongoDB
    */
