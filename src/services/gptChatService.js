@@ -872,6 +872,59 @@ isMessageDuplicate(userMsg, modelMsg) {
         throw new Error(`Không thể xử lý audio: ${error.message}`);
     }
 }
+async generateCatchTheWordRounds(numRounds) {
+  const prompt = `Bạn là một người quản trò game "Đuổi Hình Bắt Chữ" của Việt Nam, thông minh và sáng tạo.
+  Nhiệm vụ của bạn là tạo ra chính xác ${numRounds} câu đố. Mỗi câu đố phải là một JSON object với các trường sau:
+  1. "correctAnswer": Một thành ngữ hoặc cụm từ tiếng Việt phổ biến.
+  2. "imagePrompt": Một đoạn mô tả **bằng tiếng Anh** để AI tạo hình có thể vẽ ra một bức tranh gợi ý cho "correctAnswer". Prompt phải mô tả hình ảnh một cách thuần túy, không chứa chữ hay gợi ý lộ liễu đáp án.
+  3. "options": Một mảng gồm chính xác 4 chuỗi tiếng Việt. Một trong số đó là "correctAnswer". Ba cái còn lại là đáp án sai nhưng hợp lý để gây nhiễu.
+  4. "correctAnswerIndex": Chỉ số (dạng số, từ 0 đến 3) của đáp án đúng trong mảng "options".
+
+  TRẢ VỀ KẾT QUẢ LÀ MỘT MẢNG JSON HỢP LỆ. KHÔNG BAO GỒM BẤT KỲ GIẢI THÍCH NÀO KHÁC.`;
+
+  try {
+    // Sử dụng trực tiếp this.model.generateContent thay vì hàm generalChat không tồn tại.
+    // Cách làm này giống hệt với hàm generateQuizQuestions, đảm bảo không lưu vào log chat.
+    const result = await this.model.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        // Yêu cầu AI trả về JSON để đảm bảo định dạng.
+        responseMimeType: "application/json",
+        // Định nghĩa cấu trúc JSON mong muốn (schema) để AI tuân thủ.
+        responseSchema: {
+          type: "ARRAY",
+          items: {
+            type: "OBJECT",
+            properties: {
+              correctAnswer: { type: "STRING" },
+              imagePrompt: { type: "STRING" },
+              options: {
+                type: "ARRAY",
+                items: { type: "STRING" }
+              },
+              correctAnswerIndex: { type: "NUMBER" }
+            },
+            required: ["correctAnswer", "imagePrompt", "options", "correctAnswerIndex"]
+          }
+        }
+      }
+    });
+
+    const response = await result.response;
+    const jsonString = response.text();
+    const parsedJson = JSON.parse(jsonString);
+    return parsedJson;
+
+  } catch (error) {
+    // Tích hợp với hàm log lỗi chung của bạn.
+    await this.logError(error, {
+      type: 'generateCatchTheWordRounds',
+      numRounds
+    });
+    console.error("Lỗi khi tạo câu đố Đuổi Hình Bắt Chữ:", error);
+    return []; // Trả về mảng rỗng nếu có lỗi để không làm sập game.
+  }
+}
   /**
    * Đóng kết nối MongoDB
    */

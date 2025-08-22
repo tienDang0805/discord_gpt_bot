@@ -12,6 +12,7 @@ module.exports = async (interaction) => {
     const imageGenService = new ImageGenerationService();
     const textToAudioService = new TextToAudioService();
     const quizService = interaction.client.quizService; // Truy cập QuizService từ client
+    const catchTheWordService = interaction.client.catchTheWordService;
 
     if (interaction.isChatInputCommand()) {
         if (interaction.commandName === 'thoitiet') {
@@ -325,6 +326,7 @@ module.exports = async (interaction) => {
                 await interaction.editReply(`❌ Error: ${error.message}`);
             }
         }
+        
         if (interaction.commandName === 'setting') {
             const subcommand = interaction.options.getSubcommand();
 
@@ -451,6 +453,36 @@ module.exports = async (interaction) => {
             const result = await quizService.cancelQuiz(guildId, userId);
             await interaction.editReply({ content: result.message, ephemeral: true });
         }
+        if (interaction.commandName === 'catchtheword') {
+            if (catchTheWordService.isGameActive(interaction.guild.id)) {
+                return await interaction.reply({ content: '❌ Đã có một game đang diễn ra rồi.', ephemeral: true });
+            }
+
+            const modal = new ModalBuilder()
+                .setCustomId('ctw_setup_modal')
+                .setTitle('Cài Đặt Game Đuổi Hình Bắt Chữ');
+
+            const numRoundsInput = new TextInputBuilder()
+                .setCustomId('num_rounds_input')
+                .setLabel('Số lượng vòng (tối đa 3 vòng)')
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder('Nhập số từ 1 đến 3')
+                .setRequired(true);
+            
+            const timeLimitInput = new TextInputBuilder()
+                .setCustomId('time_limit_input')
+                .setLabel('Thời gian mỗi vòng (giây, 15-60)')
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder('Mặc định: 20')
+                .setRequired(false);
+
+            modal.addComponents(
+                new ActionRowBuilder().addComponents(numRoundsInput),
+                new ActionRowBuilder().addComponents(timeLimitInput)
+            );
+
+            await interaction.showModal(modal);
+        }
         // END: Xử lý lệnh Quiz
         return;
     }
@@ -546,6 +578,30 @@ module.exports = async (interaction) => {
                 await interaction.editReply('❌ Đã xảy ra lỗi khi tạo quiz. Vui lòng thử lại sau.');
             }
         }
+        if (interaction.customId === 'ctw_setup_modal') {
+            await interaction.deferReply();
+            const numRounds = parseInt(interaction.fields.getTextInputValue('num_rounds_input'));
+            const timeLimitInput = interaction.fields.getTextInputValue('time_limit_input');
+            const timeLimit = timeLimitInput ? parseInt(timeLimitInput) : 20;
+
+            // Áp dụng giới hạn
+            if (isNaN(numRounds) || numRounds < 1 || numRounds > 3) {
+                return await interaction.editReply('❌ Số vòng phải là một số từ 1 đến 3.');
+            }
+            if (isNaN(timeLimit) || timeLimit < 15 || timeLimit > 60) {
+                return await interaction.editReply('❌ Thời gian phải là một số từ 15 đến 60 giây.');
+            }
+
+            const result = await catchTheWordService.startGame(
+                interaction.guild.id,
+                interaction.channel.id,
+                interaction.user.id,
+                numRounds,
+                timeLimit
+            );
+            
+            await interaction.editReply(result.message);
+        }
         // END: Xử lý submit modal Quiz
         return;
     }
@@ -574,7 +630,18 @@ module.exports = async (interaction) => {
             return; // Quan trọng: Dừng lại sau khi xử lý nút quiz
         }
         // END: Xử lý nút bấm Quiz
-
+        if (interaction.customId.startsWith('ctw_answer_')) {
+            // Không deferUpdate để tránh lỗi "This interaction failed" nếu user bấm nhanh
+            const answerIndex = parseInt(interaction.customId.split('_')[2]);
+            await catchTheWordService.submitAnswer(
+                interaction.guild.id, 
+                interaction.user.id,
+                interaction.user.tag, // Gửi cả tên user cho dễ hiển thị
+                answerIndex
+            );
+            // Service sẽ tự xử lý các thông báo, không cần reply ở đây
+            return; // Dừng lại sau khi xử lý nút game
+        }
         let historyCleared = false;
         let actionCompleted = false;
 

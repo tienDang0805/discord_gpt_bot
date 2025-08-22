@@ -227,4 +227,13 @@ module.exports = [
       }
     },
     // END: Thêm lệnh Quiz
+    {
+      data: new SlashCommandBuilder()
+        .setName('catchtheword')
+        .setDescription('🖼️ Bắt đầu game Đuổi Hình Bắt Chữ bằng hình ảnh AI.'),
+      async execute(interaction) {
+        // Logic xử lý chính đã nằm trong interactionHandler.js
+        // File này chỉ dùng để đăng ký lệnh với Discord.
+      }
+    },
 ];

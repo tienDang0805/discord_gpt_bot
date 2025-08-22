@@ -8,9 +8,13 @@ const messageHandler = require('./handlers/messageHandler');
 const interactionHandler = require('./handlers/interactionHandler');
 const GptChatService = require('./services/gptChatService');
 const QuizService = require('./services/quizService'); // THÊM DÒNG NÀY
+const CatchTheWordService = require('./services/catchTheWordService');
+
 
 // Gán QuizService vào client để có thể truy cập từ các handler
 discordClient.quizService = QuizService;
+discordClient.catchTheWordService = CatchTheWordService;
+
 // Gán discordClient vào global để QuizService có thể fetch channel/user
 global.discordClient = discordClient;
 
