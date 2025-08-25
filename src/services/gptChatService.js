@@ -872,25 +872,46 @@ isMessageDuplicate(userMsg, modelMsg) {
         throw new Error(`Không thể xử lý audio: ${error.message}`);
     }
 }
-async generateCatchTheWordRounds(numRounds) {
-  const prompt = `Bạn là một người quản trò game "Đuổi Hình Bắt Chữ" của Việt Nam, thông minh và sáng tạo.
-  Nhiệm vụ của bạn là tạo ra chính xác ${numRounds} câu đố. Mỗi câu đố phải là một JSON object với các trường sau:
-  1. "correctAnswer": Một thành ngữ hoặc cụm từ tiếng Việt phổ biến.
-  2. "imagePrompt": Một đoạn mô tả **bằng tiếng Anh** để AI tạo hình có thể vẽ ra một bức tranh gợi ý cho "correctAnswer". Prompt phải mô tả hình ảnh một cách thuần túy, không chứa chữ hay gợi ý lộ liễu đáp án.
-  3. "options": Một mảng gồm chính xác 4 chuỗi tiếng Việt. Một trong số đó là "correctAnswer". Ba cái còn lại là đáp án sai nhưng hợp lý để gây nhiễu.
-  4. "correctAnswerIndex": Chỉ số (dạng số, từ 0 đến 3) của đáp án đúng trong mảng "options".
 
-  TRẢ VỀ KẾT QUẢ LÀ MỘT MẢNG JSON HỢP LỆ. KHÔNG BAO GỒM BẤT KỲ GIẢI THÍCH NÀO KHÁC.`;
+async generateCatchTheWordRounds(numRounds, difficulty) {
+  const prompt = `
+Bạn là một người quản trò game "Đuổi Hình Bắt Chữ" của Việt Nam, cực kỳ thông minh, hài hước và sáng tạo.
+Nhiệm vụ của bạn là tạo ra chính xác ${numRounds} câu đố ở độ khó "${difficulty}".
+
+**QUY TẮC BẮT BUỘC:**
+
+1.  **ĐA DẠNG HÓA ĐÁP ÁN:** Không chỉ giới hạn ở thành ngữ, tục ngữ. Hãy tạo câu đố về:
+    * Tên một bộ phim, bài hát, nhân vật nổi tiếng.
+    * Một đồ vật, con vật, địa danh.
+    * Một hành động hoặc một khái niệm trừu tượng.
+    * Thành ngữ, tục ngữ, ca dao, từ láy...
+
+2.  **ĐỊNH NGHĨA ĐỘ KHÓ ("${difficulty}"):**
+    * **Dễ:** Gợi ý hình ảnh rất trực quan, gần như mô tả thẳng đáp án. Các đáp án gây nhiễu rõ ràng là sai.
+        * Ví dụ đáp án "Cá sấu": \`imagePrompt\` có thể là "A green crocodile with many teeth".
+    * **Trung bình:** Hình ảnh cần một chút suy luận hoặc ghép chữ. Các đáp án gây nhiễu có thể liên quan đến một phần của hình ảnh.
+        * Ví dụ đáp án "Đầu voi đuôi chuột": \`imagePrompt\` là "A giant elephant head seamlessly transitioning into a tiny mouse tail".
+    * **Khó:** Hình ảnh mang tính ẩn dụ, trừu tượng hoặc chơi chữ. Đáp án gây nhiễu rất hợp lý và có liên quan về mặt logic hoặc hình ảnh.
+        * Ví dụ đáp án "Buôn dưa lê": \`imagePrompt\` là "In a bustling vietnamese market, a group of women are gathered around a street vendor selling melons and pears, they are talking and gossiping animatedly".
+    * **Địa ngục:** Hình ảnh cực kỳ trừu tượng, đòi hỏi kiến thức sâu rộng hoặc suy luận nhiều tầng. Gợi ý có thể là một phép ẩn dụ cho một phép ẩn dụ khác. Đáp án gây nhiễu cực kỳ tinh vi.
+        * Ví dụ đáp án "Mã đáo thành công": \`imagePrompt\` là "An epic painting of a single majestic horse returning to a citadel at sunset, looking victorious".
+
+3.  **TRƯỜNG DỮ LIỆU JSON:** Mỗi câu đố phải là một JSON object với các trường sau:
+    * \`"correctAnswer"\` (string): Đáp án đúng bằng tiếng Việt.
+    * \`"imagePrompt"\` (string): Mô tả hình ảnh **BẰNG TIẾNG ANH** để AI vẽ. **QUAN TRỌNG:** Mô tả cảnh một cách thuần túy, không chứa chữ, không gợi ý lộ liễu.
+    * \`"options"\` (array): Một mảng gồm chính xác 4 chuỗi tiếng Việt. Một trong số đó là \`correctAnswer\`. Ba cái còn lại là đáp án sai nhưng phải **thật sự hợp lý, thông minh, và gây nhiễu tốt** dựa trên độ khó đã chọn.
+    * \`"correctAnswerIndex"\` (number): Chỉ số (từ 0 đến 3) của đáp án đúng trong mảng \`options\`.
+
+**YÊU CẦU ĐẦU RA:**
+CHỈ TRẢ VỀ MỘT MẢNG JSON HỢP LỆ. KHÔNG BAO GỒM BẤT KỲ GIẢI THÍCH, MARKDOWN HAY VĂN BẢN NÀO KHÁC.
+  `;
 
   try {
-    // Sử dụng trực tiếp this.model.generateContent thay vì hàm generalChat không tồn tại.
-    // Cách làm này giống hệt với hàm generateQuizQuestions, đảm bảo không lưu vào log chat.
+    // Giả sử bạn có một model đã khởi tạo là this.model
     const result = await this.model.generateContent({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
-        // Yêu cầu AI trả về JSON để đảm bảo định dạng.
         responseMimeType: "application/json",
-        // Định nghĩa cấu trúc JSON mong muốn (schema) để AI tuân thủ.
         responseSchema: {
           type: "ARRAY",
           items: {
@@ -916,13 +937,14 @@ async generateCatchTheWordRounds(numRounds) {
     return parsedJson;
 
   } catch (error) {
-    // Tích hợp với hàm log lỗi chung của bạn.
-    await this.logError(error, {
-      type: 'generateCatchTheWordRounds',
-      numRounds
-    });
+    // Giả sử bạn có hàm log lỗi
+    // await this.logError(error, {
+    //   type: 'generateCatchTheWordRounds',
+    //   numRounds,
+    //   difficulty
+    // });
     console.error("Lỗi khi tạo câu đố Đuổi Hình Bắt Chữ:", error);
-    return []; // Trả về mảng rỗng nếu có lỗi để không làm sập game.
+    return []; 
   }
 }
   /**

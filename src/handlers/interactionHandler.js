@@ -464,9 +464,9 @@ module.exports = async (interaction) => {
 
             const numRoundsInput = new TextInputBuilder()
                 .setCustomId('num_rounds_input')
-                .setLabel('Số lượng vòng (tối đa 3 vòng)')
+                .setLabel('Số lượng vòng (tối đa 5 vòng)') // Tăng lên 5 cho hấp dẫn
                 .setStyle(TextInputStyle.Short)
-                .setPlaceholder('Nhập số từ 1 đến 3')
+                .setPlaceholder('Nhập số từ 1 đến 5')
                 .setRequired(true);
             
             const timeLimitInput = new TextInputBuilder()
@@ -476,9 +476,18 @@ module.exports = async (interaction) => {
                 .setPlaceholder('Mặc định: 20')
                 .setRequired(false);
 
+            // THÊM TRƯỜNG NHẬP ĐỘ KHÓ
+            const difficultyInput = new TextInputBuilder()
+                .setCustomId('difficulty_input')
+                .setLabel('Độ khó (Dễ, Trung bình, Khó, Địa ngục)')
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder('Mặc định: Trung bình')
+                .setRequired(false);
+
             modal.addComponents(
                 new ActionRowBuilder().addComponents(numRoundsInput),
-                new ActionRowBuilder().addComponents(timeLimitInput)
+                new ActionRowBuilder().addComponents(timeLimitInput),
+                new ActionRowBuilder().addComponents(difficultyInput) // Thêm vào modal
             );
 
             await interaction.showModal(modal);
@@ -583,13 +592,22 @@ module.exports = async (interaction) => {
             const numRounds = parseInt(interaction.fields.getTextInputValue('num_rounds_input'));
             const timeLimitInput = interaction.fields.getTextInputValue('time_limit_input');
             const timeLimit = timeLimitInput ? parseInt(timeLimitInput) : 20;
+            
+            // LẤY VÀ KIỂM TRA ĐỘ KHÓ
+            const difficultyInput = interaction.fields.getTextInputValue('difficulty_input');
+            const difficulty = difficultyInput?.trim() || 'Trung bình';
 
-            // Áp dụng giới hạn
-            if (isNaN(numRounds) || numRounds < 1 || numRounds > 3) {
-                return await interaction.editReply('❌ Số vòng phải là một số từ 1 đến 3.');
+
+            if (isNaN(numRounds) || numRounds < 1 || numRounds > 5) { // Cập nhật giới hạn
+                return await interaction.editReply('❌ Số vòng phải là một số từ 1 đến 5.');
             }
             if (isNaN(timeLimit) || timeLimit < 15 || timeLimit > 60) {
                 return await interaction.editReply('❌ Thời gian phải là một số từ 15 đến 60 giây.');
+            }
+            
+            const validDifficulties = ['Dễ', 'Trung bình', 'Khó', 'Địa ngục'];
+            if (!validDifficulties.includes(difficulty)) {
+                return await interaction.editReply('❌ Độ khó không hợp lệ. Vui lòng chọn: Dễ, Trung bình, Khó, hoặc Địa ngục.');
             }
 
             const result = await catchTheWordService.startGame(
@@ -597,7 +615,8 @@ module.exports = async (interaction) => {
                 interaction.channel.id,
                 interaction.user.id,
                 numRounds,
-                timeLimit
+                timeLimit,
+                difficulty // Truyền độ khó vào service
             );
             
             await interaction.editReply(result.message);
@@ -631,16 +650,22 @@ module.exports = async (interaction) => {
         }
         // END: Xử lý nút bấm Quiz
         if (interaction.customId.startsWith('ctw_answer_')) {
-            // Không deferUpdate để tránh lỗi "This interaction failed" nếu user bấm nhanh
+            await interaction.deferUpdate(); // Xác nhận đã nhận tương tác
             const answerIndex = parseInt(interaction.customId.split('_')[2]);
-            await catchTheWordService.submitAnswer(
+            const result = await catchTheWordService.submitAnswer(
                 interaction.guild.id, 
                 interaction.user.id,
-                interaction.user.tag, // Gửi cả tên user cho dễ hiển thị
+                interaction.user.tag,
                 answerIndex
             );
-            // Service sẽ tự xử lý các thông báo, không cần reply ở đây
-            return; // Dừng lại sau khi xử lý nút game
+
+            // Gửi tin nhắn xác nhận hoặc báo đã trả lời rồi
+            if (result && result.answered) {
+                 await interaction.followUp({ content: 'Bạn đã trả lời vòng này rồi!', ephemeral: true });
+            } else {
+                 await interaction.followUp({ content: '✅ Câu trả lời của bạn đã được ghi nhận!', ephemeral: true });
+            }
+            return;
         }
         let historyCleared = false;
         let actionCompleted = false;
