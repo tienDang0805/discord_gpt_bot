@@ -102,7 +102,7 @@ jobs:
             echo 'YOUTUBE_COOKIE=${{ secrets.YOUTUBE_COOKIE }}' >> src/.env
             echo "MONGODB_URI=${{ secrets.MONGODB_URI }}" >> src/.env
             echo "DISCORD_CHANNEL_ID=${{ secrets.DISCORD_CHANNEL_ID }}" >> src/.env
-            echo "SYSTEM_PROMPT=${{ secrets.SYSTEM_PROMPT }}" >> src/.env
+            echo  "SYSTEM_PROMPT"="${{ secrets.SYSTEM_PROMPT }}" >> src/.env
 
 
 
