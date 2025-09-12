@@ -25,7 +25,6 @@ jobs:
             set -e # Dừng ngay lập tức nếu có lỗi
 
             echo ">>> Kích hoạt môi trường NVM và Node.js..."
-            # Tải và kích hoạt NVM (Node Version Manager)
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             
@@ -43,8 +42,6 @@ jobs:
             npm install --production
 
             echo ">>> Tạo file .env từ GitHub Secrets..."
-            # ✅ SỬA LỖI Ở ĐÂY: Dùng cat <<EOF là cách an toàn và đúng đắn nhất
-            # Nó ghi toàn bộ khối văn bản vào file, bất kể có ký tự đặc biệt hay nhiều dòng
             cat <<EOF > src/.env
             DISCORD_TOKEN=${{ secrets.DISCORD_TOKEN }}
             CLIENT_ID=${{ secrets.CLIENT_ID }}
@@ -64,16 +61,33 @@ jobs:
 
             echo "✅ Triển khai thành công!"
 
-      # Bước 3: Gửi thông báo đến Discord (gọn gàng và chuyên nghiệp hơn)
-      - name: Send Discord Notification
-        uses: navanee-w/discord-notification@v1
+      # Bước 3: Gửi thông báo đến Discord (SỬ DỤNG ACTION MỚI)
+      - name: Send Discord Notification on Success
+        # Chỉ chạy bước này khi các bước trên thành công
+        if: success()
+        uses: sarisia/actions-status-discord@v1
         with:
-          # Dùng webhook an toàn hơn, lấy từ Kênh Discord -> Tích hợp -> Webhooks
-          webhook_url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          # Dùng lại webhook URL bạn đã tạo
+          webhook: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          status: ${{ job.status }}
           title: "🚀 Triển khai thành công!"
           description: |
             Bot **Em Bé Racoon** đã được cập nhật thành công.
             **Người triển khai:** `${{ github.actor }}`
             **Commit:** `[${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})`
-          color: "3447003" # Màu xanh
-          timestamp: true
+          color: 0x34A853 # Màu xanh lá cây
+
+      - name: Send Discord Notification on Failure
+        # Chỉ chạy bước này khi có lỗi xảy ra
+        if: failure()
+        uses: sarisia/actions-status-discord@v1
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          status: ${{ job.status }}
+          title: "❌ Triển khai thất bại!"
+          description: |
+            Đã có lỗi xảy ra trong quá trình triển khai bot.
+            **Người triển khai:** `${{ github.actor }}`
+            **Commit:** `[${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})`
+            [Xem chi tiết lỗi tại đây](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          color: 0xEA4335 # Màu đỏ
