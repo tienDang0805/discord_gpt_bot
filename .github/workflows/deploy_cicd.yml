@@ -10,11 +10,9 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      # Bước 1: Checkout code để lấy thông tin commit cho việc gửi thông báo
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Bước 2: Kết nối SSH và thực hiện tất cả công việc trên server của bạn
       - name: Deploy to Server via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -22,7 +20,7 @@ jobs:
           username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            set -e # Dừng ngay lập tức nếu có lỗi
+            set -e
 
             echo ">>> Kích hoạt môi trường NVM và Node.js..."
             export NVM_DIR="$HOME/.nvm"
@@ -38,8 +36,9 @@ jobs:
             echo ">>> Sử dụng Node.js phiên bản 22..."
             nvm use 22
 
-            echo ">>> Cài đặt các gói phụ thuộc cho production..."
-            npm install --production
+            # QUAN TRỌNG: Cài đặt TẤT CẢ dependencies, bao gồm cả discord.js để script có thể chạy
+            echo ">>> Cài đặt các gói phụ thuộc..."
+            npm install
 
             echo ">>> Tạo file .env từ GitHub Secrets..."
             cat <<EOF > src/.env
@@ -58,36 +57,62 @@ jobs:
             echo ">>> Khởi động lại bot bằng PM2..."
             pm2 restart racoon-discord || pm2 start index.js --name "racoon-discord"
             pm2 save
+            echo "✅ Bot đã được triển khai và khởi động lại!"
 
-            echo "✅ Triển khai thành công!"
+            # --- SCRIPT GỬI THÔNG BÁO DISCORD NHƯ YÊU CẦU ---
+            echo ">>> Tạo và chạy script gửi thông báo Discord..."
+            # Truyền các biến môi trường của GitHub vào script Node.js
+            cat << EOF_NODE_SCRIPT > send_deploy_notification.js
+            const { Client, GatewayIntentBits } = require("discord.js");
+            const dotenv = require("dotenv");
+            dotenv.config({ path: './src/.env' });
 
-      # Bước 3: Gửi thông báo đến Discord (SỬ DỤNG ACTION MỚI)
-      - name: Send Discord Notification on Success
-        # Chỉ chạy bước này khi các bước trên thành công
-        if: success()
-        uses: sarisia/actions-status-discord@v1
-        with:
-          # Dùng lại webhook URL bạn đã tạo
-          webhook: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          status: ${{ job.status }}
-          title: "🚀 Triển khai thành công!"
-          description: |
-            Bot **Em Bé Racoon** đã được cập nhật thành công.
-            **Người triển khai:** `${{ github.actor }}`
-            **Commit:** `[${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})`
-          color: 0x34A853 # Màu xanh lá cây
+            // Lấy thông tin từ các biến môi trường
+            const token = process.env.DISCORD_TOKEN;
+            const channelId = process.env.DISCORD_CHANNEL_ID;
+            const commitSha = process.env.GITHUB_SHA ? process.env.GITHUB_SHA.substring(0, 7) : "N/A";
+            const repoUrl = \`https://github.com/\${process.env.GITHUB_REPOSITORY}\`;
+            const commitUrl = \`\${repoUrl}/commit/\${process.env.GITHUB_SHA}\`;
+            const actor = process.env.GITHUB_ACTOR || "Unknown";
 
-      - name: Send Discord Notification on Failure
-        # Chỉ chạy bước này khi có lỗi xảy ra
-        if: failure()
-        uses: sarisia/actions-status-discord@v1
-        with:
-          webhook: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          status: ${{ job.status }}
-          title: "❌ Triển khai thất bại!"
-          description: |
-            Đã có lỗi xảy ra trong quá trình triển khai bot.
-            **Người triển khai:** `${{ github.actor }}`
-            **Commit:** `[${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})`
-            [Xem chi tiết lỗi tại đây](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-          color: 0xEA4335 # Màu đỏ
+            if (!token || !channelId) {
+                console.error("Lỗi: Thiếu DISCORD_TOKEN hoặc DISCORD_CHANNEL_ID trong file .env");
+                process.exit(1);
+            }
+
+            const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+
+            client.once("ready", async () => {
+                try {
+                    const channel = await client.channels.fetch(channelId);
+                    if (channel && channel.isTextBased()) {
+                        await channel.send(
+                            \`🚀 **Triển khai thành công!**\n\` +
+                            \`**Người triển khai:** \`\${actor}\`\n\` +
+                            \`**Commit:** [\${commitSha}](\${commitUrl})\n\` +
+                            \`Bot đã được cập nhật và khởi động lại.\`
+                        );
+                        console.log("Đã gửi thông báo triển khai thành công.");
+                    } else {
+                        console.error(\`Không tìm thấy kênh hoặc kênh không phải là kênh văn bản: \${channelId}\`);
+                    }
+                } catch (error) {
+                    console.error("Lỗi khi gửi tin nhắn Discord:", error);
+                } finally {
+                    client.destroy();
+                }
+            });
+
+            client.login(token).catch(err => {
+                console.error("Lỗi đăng nhập Discord:", err);
+                process.exit(1);
+            });
+            EOF_NODE_SCRIPT
+
+            # Chờ một chút để bot chính khởi động lại hoàn toàn
+            sleep 5
+            # Chạy script bằng Node.js và truyền các biến môi trường của GitHub vào
+            GITHUB_SHA="${{ github.sha }}" GITHUB_REPOSITORY="${{ github.repository }}" GITHUB_ACTOR="${{ github.actor }}" node ./send_deploy_notification.js
+            
+            # Xóa file script tạm thời
+            rm send_deploy_notification.js
