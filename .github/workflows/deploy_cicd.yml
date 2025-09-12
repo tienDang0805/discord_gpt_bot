@@ -36,7 +36,6 @@ jobs:
             echo ">>> Sử dụng Node.js phiên bản 22..."
             nvm use 22
 
-            # QUAN TRỌNG: Cài đặt TẤT CẢ dependencies, bao gồm cả discord.js để script có thể chạy
             echo ">>> Cài đặt các gói phụ thuộc..."
             npm install
 
@@ -59,20 +58,19 @@ jobs:
             pm2 save
             echo "✅ Bot đã được triển khai và khởi động lại!"
 
-            # --- SCRIPT GỬI THÔNG BÁO DISCORD NHƯ YÊU CẦU ---
             echo ">>> Tạo và chạy script gửi thông báo Discord..."
-            # Truyền các biến môi trường của GitHub vào script Node.js
-            cat << EOF_NODE_SCRIPT > send_deploy_notification.js
+            # SỬA LỖI 1: Thêm dấu nháy đơn '' vào 'EOF_NODE_SCRIPT'
+            # Điều này ngăn shell (bash) cố gắng đọc các biến bên trong script JavaScript
+            cat << 'EOF_NODE_SCRIPT' > send_deploy_notification.js
             const { Client, GatewayIntentBits } = require("discord.js");
             const dotenv = require("dotenv");
             dotenv.config({ path: './src/.env' });
 
-            // Lấy thông tin từ các biến môi trường
             const token = process.env.DISCORD_TOKEN;
             const channelId = process.env.DISCORD_CHANNEL_ID;
             const commitSha = process.env.GITHUB_SHA ? process.env.GITHUB_SHA.substring(0, 7) : "N/A";
-            const repoUrl = \`https://github.com/\${process.env.GITHUB_REPOSITORY}\`;
-            const commitUrl = \`\${repoUrl}/commit/\${process.env.GITHUB_SHA}\`;
+            const repoUrl = `https://github.com/${process.env.GITHUB_REPOSITORY}`;
+            const commitUrl = `${repoUrl}/commit/${process.env.GITHUB_SHA}`;
             const actor = process.env.GITHUB_ACTOR || "Unknown";
 
             if (!token || !channelId) {
@@ -86,15 +84,17 @@ jobs:
                 try {
                     const channel = await client.channels.fetch(channelId);
                     if (channel && channel.isTextBased()) {
-                        await channel.send(
-                            \`🚀 **Triển khai thành công!**\n\` +
-                            \`**Người triển khai:** \`\${actor}\`\n\` +
-                            \`**Commit:** [\${commitSha}](\${commitUrl})\n\` +
-                            \`Bot đã được cập nhật và khởi động lại.\`
-                        );
+                        // SỬA LỖI 2: Dùng một template string duy nhất, đa dòng
+                        // Cách này sạch sẽ và tránh được lỗi cú pháp
+                        const message = `🚀 **Triển khai thành công!**
+                        **Người triển khai:** \`${actor}\`
+                        **Commit:** [${commitSha}](${commitUrl})
+                        Bot đã được cập nhật và khởi động lại.`;
+
+                        await channel.send(message);
                         console.log("Đã gửi thông báo triển khai thành công.");
                     } else {
-                        console.error(\`Không tìm thấy kênh hoặc kênh không phải là kênh văn bản: \${channelId}\`);
+                        console.error(`Không tìm thấy kênh hoặc kênh không phải là kênh văn bản: ${channelId}`);
                     }
                 } catch (error) {
                     console.error("Lỗi khi gửi tin nhắn Discord:", error);
@@ -109,10 +109,7 @@ jobs:
             });
             EOF_NODE_SCRIPT
 
-            # Chờ một chút để bot chính khởi động lại hoàn toàn
             sleep 5
-            # Chạy script bằng Node.js và truyền các biến môi trường của GitHub vào
             GITHUB_SHA="${{ github.sha }}" GITHUB_REPOSITORY="${{ github.repository }}" GITHUB_ACTOR="${{ github.actor }}" node ./send_deploy_notification.js
             
-            # Xóa file script tạm thời
             rm send_deploy_notification.js
