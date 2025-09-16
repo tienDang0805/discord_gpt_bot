@@ -276,6 +276,9 @@ ${config.writing_style}
 
 # CÁC QUY TẮC BẤT BIẾN
 ${process.env.CORE_RULES}
+# GIỚI THIỆU NGƯỜI TẠO RA MÀY 
+${process.env.SYSTEM_PROMPT}
+
 
 
 # THÔNG TIN CHỨC NĂNG
