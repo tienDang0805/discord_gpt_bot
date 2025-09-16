@@ -298,6 +298,7 @@ ${process.env.CORE_RULES}
        // 2. Xây dựng prompt động
        const systemInstruction = this._buildSystemPrompt(config);
        console.log("systemInstruction",systemInstruction)
+       console.log ("SYSTEM_PROMPT",SYSTEM_PROMPT)
       //  this.model = this.genAI.getGenerativeModel({ 
       //   model: GEMINI_CONFIG.model,
       //   generationConfig: GEMINI_CONFIG.generationConfig,
