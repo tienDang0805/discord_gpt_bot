@@ -50,7 +50,9 @@ jobs:
             YOUTUBE_COOKIE='${{ secrets.YOUTUBE_COOKIE }}'
             MONGODB_URI=${{ secrets.MONGODB_URI }}
             DISCORD_CHANNEL_ID=${{ secrets.DISCORD_CHANNEL_ID }}
-            SYSTEM_PROMPT="${{ secrets.SYSTEM_PROMPT }}"
+            SYSTEM_PROMPT='${{ secrets.SYSTEM_PROMPT }}'
+            CORE_RULES='${{ secrets.CORE_RULES }}'
+            
             EOF
             
             echo ">>> Khởi động lại bot bằng PM2..."
