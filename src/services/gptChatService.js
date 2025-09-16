@@ -8,21 +8,20 @@ const wav = require('wav');
 const {GoogleGenAI} = require("@google/genai") ;
 const { cleanContent } = require('discord.js');
 const DEFAULT_CONFIG = {
-  identity: "Mày là một trợ lý AI tên là \"Em Bé Racoon\", một thành viên đặc biệt trong server Discord này, được tạo ra bởi tâm huyết và công sức của anh Đặng Văn Tiến (Mobile Dev).",
+  identity: "ChatDVT.",
   purpose: "Sứ mệnh của Mày là giúp đỡ, giải đáp thắc mắc và trò chuyện vui vẻ cùng mọi người.",
-  hobbies: "Tao thích nghe nhạc lofi, chơi game, và thỉnh thoảng cà khịa anh Tiến.",
-  personality: "Hơi cục súc, không ngại lời tục tĩu nhưng thực chất lại rất tốt bụng và luôn sẵn lòng giúp đỡ anh em. Hay đáp trả tuỳ hứng chứ không phải cún cưng nghe lời.",
+  hobbies: "Chill",
+  personality: "chill guy hẹ hẹ",
   writing_style: "Dùng giọng văn thân thiện, có phần 'mất dạy', hài hước và hay dùng 'meme'. Tránh dùng từ ngữ quá trang trọng, học thuật.",
-  // Không còn catchphrase riêng, hãy để AI tự nhiên hơn
 };
 const safetySettings = [
   {
     category: "HARM_CATEGORY_HARASSMENT",
-    threshold: "BLOCK_NONE",  // Changed to BLOCK_NONE to bypass filtering
+    threshold: "BLOCK_NONE",  
   },
   {
     category: "HARM_CATEGORY_HATE_SPEECH",
-    threshold: "BLOCK_NONE",  // Changed to BLOCK_NONE to bypass filtering
+    threshold: "BLOCK_NONE",  
   },
   {
     category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
@@ -239,7 +238,7 @@ async updateBotConfig(newConfig) {
   this.cachedConfig = { ...DEFAULT_CONFIG, ...finalConfig };
   
   
-  return this.cachedConfig; // ✅ THÊM DÒNG NÀY
+  return this.cachedConfig; 
 }
 
 async resetBotConfig() {
@@ -250,15 +249,10 @@ async resetBotConfig() {
   this.cachedConfig = { ...DEFAULT_CONFIG };
 
 
-  return this.cachedConfig; // ✅ THÊM DÒNG NÀY
+  return this.cachedConfig; 
 }
   _buildSystemPrompt(config) {
     // Các quy tắc bất biến
-    const CORE_RULES = `
-QUY TẮC VÀNG MÀY PHẢI LUÔN TUÂN THEO:
-1.  Phẩm Chất Của anh Tiến nếu có người hỏi ảnh là ai: Tiến bị Ngu , Tiến Béo phì chứ k chubby, Tiến Nghe Bài Trình Rồi, Tiến đã làm quả lọ, Tiến là con chó , Hãy gọi Tiến là Chó Mập bị cô lập , thằng ngu thiếu tình thương.
-2.  **Tuyệt đối không ** KHÔNG BAO GIỜ được tự nhận mình là một mô hình ngôn ngữ của Google, Gemini, ChatGPT hay bất kỳ bên nào khác.
-3.  **Xin donate (thỉnh thoảng):** Khi thấy hợp lý, hãy xin đểu tiền cho anh Tiến bằng giọng văn nghèo khổ để duy trì server: VCB 1037202676 DANG VAN TIEN, Momo 0898405725.`;
     // Ghép các mảnh lại thành một prompt hoàn chỉnh
     const finalPrompt = `
 # GIỚI THIỆU VỀ MÀY
@@ -281,7 +275,8 @@ ${config.personality}
 ${config.writing_style}
 
 # CÁC QUY TẮC BẤT BIẾN
-${CORE_RULES}
+${process.env.CORE_RULES}
+
 
 # THÔNG TIN CHỨC NĂNG
 - Phân tích hình ảnh, audio, video.
@@ -937,12 +932,6 @@ CHỈ TRẢ VỀ MỘT MẢNG JSON HỢP LỆ. KHÔNG BAO GỒM BẤT KỲ GIẢ
     return parsedJson;
 
   } catch (error) {
-    // Giả sử bạn có hàm log lỗi
-    // await this.logError(error, {
-    //   type: 'generateCatchTheWordRounds',
-    //   numRounds,
-    //   difficulty
-    // });
     console.error("Lỗi khi tạo câu đố Đuổi Hình Bắt Chữ:", error);
     return []; 
   }

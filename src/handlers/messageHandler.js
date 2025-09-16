@@ -6,7 +6,7 @@ const { sendLongMessage } = require('../utils/messageHelper');
 const { createAudioPlayer, createAudioResource , StreamType, demuxProbe, joinVoiceChannel, NoSubscriberBehavior, AudioPlayerStatus, VoiceConnectionStatus, getVoiceConnection } = require('@discordjs/voice')
 const play = require('play-dl')
 const fs = require('fs');
-const ADMIN_IDS = ['448507913879945216']; // Replace with actual admin IDs
+const ADMIN_IDS = ['448507913879945216']; 
 const pkGameService = require('../services/PKGameService');
 module.exports = async (message) => {
     if (message.author.bot) return;
@@ -30,35 +30,30 @@ module.exports = async (message) => {
         return message.reply(result.message);
     }
     
-    // Xử lý khi có file ghi âm đính kèm và game đang diễn ra
     if (message.attachments.size > 0 && pkGameService.gameSession?.status === "in-progress") {
         const audioAttachment = message.attachments.find(att => att.contentType?.startsWith('audio/'));
         if (audioAttachment) {
             const result = await pkGameService.processTurn(message.author, audioAttachment);
-            // Sửa lỗi: Chỉ gửi thuộc tính 'message' từ đối tượng trả về.
             return message.reply(result.message);
         }
     }
     const lowerCaseContent = message.content.toLowerCase();
-    // Biểu thức chính quy để bắt "thì?", "thi ?", "thi?", "thj?", "th1?" (không phân biệt hoa thường)
-    const banPhraseRegex = /^th[ij1]\s*\?$/i; 
-
-    if (banPhraseRegex.test(lowerCaseContent)) {
+    const cleanedContent = message.content.replace(/^\s+|\s+$/g, '');
+    const banPhraseRegex = /^th[iìj1]\s*\??$/i; 
+    if (banPhraseRegex.test(cleanedContent)) {
+        console.log("cặc")
         // Kiểm tra nếu người dùng là admin
         if (ADMIN_IDS.includes(message.author.id)) {
             console.log(`Admin ${message.author.tag} đã dùng "Thì?" nhưng được miễn ban.`);
-            return; // Admin được miễn
+            return; 
         }
 
         try {
-            // Ban thành viên trong 1 giờ (3600 giây * 1000 ms/giây)
-            await message.member.timeout(3600 * 1000, 'Sử dụng cụm từ cấm "Thì?"');
+            await message.member.timeout(360 * 1000, 'Sử dụng cụm từ cấm "Thì?"');
             
-            // Gửi tin nhắn thông báo
             return message.channel.send("Thì? con cặc mày bị ban tao là bố chúng mày chúng mày là con tao ý kiến cái lồn");
         } catch (error) {
             console.error(`Không thể ban ${message.author.tag} vì "Thì?":`, error);
-            // Tùy chọn: Thông báo cho người dùng nếu ban thất bại (ví dụ: do thiếu quyền)
             return message.channel.send("Tao định ban mày đó, nhưng có vẻ Discord không cho phép. Nhưng vẫn nhớ kỹ lời tao nói!");
         }
     }
@@ -68,7 +63,7 @@ module.exports = async (message) => {
     }
     if (lowerCaseContent.includes('phep mau') || 
         lowerCaseContent.includes('phép màu') || 
-        lowerCaseContent.includes('phepmau')) { // "phepmao" cũng được thêm vào để bắt lỗi đánh máy nếu có
+        lowerCaseContent.includes('phepmau')) { 
         return message.reply('có cái lồn phép màu làm đi thằng mọi');
     }
     if (message.content.startsWith('!audio')) {
