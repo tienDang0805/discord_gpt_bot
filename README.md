@@ -25,7 +25,7 @@ Tài liệu này cung cấp hướng dẫn kỹ thuật chi tiết về việc c
       * **Audio-to-Text**: Chuyển đổi dữ liệu giọng nói từ các tệp âm thanh thành văn bản.
       * **Video-to-Text**: Phân tích và mô tả nội dung từ các tệp video đính kèm.
   * **Image Generation**: Tạo hình ảnh từ một mô tả văn bản (`prompt`) thông qua lệnh chuyên dụng.
-  * **Text-to-Speech (TTS)**: Tham gia kênh thoại (`voice channel`) và đọc văn bản được cung cấp bởi người dùng.
+  * **Text-to-Speech (TTS)**: Tham gia kênh thoại (`voice channel`) và trả lời câu hỏi của người dùng.
   * **Weather Data Retrieval**: Cung cấp thông tin thời tiết thời gian thực dựa trên `API`.
   * **Real-time Search**: Thực hiện tìm kiếm bằng các công cụ bên ngoài và trả về kết quả.
   * **AI-Powered Games**: Tổ chức các trò chơi tương tác như đố vui và đuổi hình bắt chữ.
