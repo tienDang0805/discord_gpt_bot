@@ -170,8 +170,5 @@ Khi có một `push event` lên nhánh `main` (`main branch`), `workflow` sẽ t
 
 ## 6. License
 
-Dự án này được phát hành dưới Giấy phép MIT. Vui lòng tham khảo file `LICENSE` để biết thêm chi tiết.
 
 -----
-
-Mong rằng lần này sẽ giải quyết dứt điểm vấn đề. Một lần nữa xin lỗi bạn vì đã làm mất thời gian.
