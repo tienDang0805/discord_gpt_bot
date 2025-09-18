@@ -940,6 +940,58 @@ CHỈ TRẢ VỀ MỘT MẢNG JSON HỢP LỆ. KHÔNG BAO GỒM BẤT KỲ GIẢ
     return []; 
   }
 }
+async generatePetFromEgg(eggType) {
+  // Prompt này yêu cầu AI làm 2 việc quan trọng:
+  // 1. Toàn bộ mô tả cho người dùng (description_vi, skill, trait) phải bằng Tiếng Việt.
+  // 2. Cung cấp một chuỗi từ khóa tiếng Anh (description_en_keywords) để dùng cho việc tạo ảnh.
+  const prompt = `
+  Bạn là một AI quản trò game "EvoVerse" siêu cấp.
+  Một người chơi đã chọn "${eggType.replace(/_/g, ' ')}". Nhiệm vụ của bạn là tạo ra một sinh vật giả tưởng hoàn chỉnh từ quả trứng này.
+
+  BẮT BUỘC LÀM THEO CÁC BƯỚC SAU:
+  1.  **Tự quyết định Độ hiếm**: Tự chọn ngẫu nhiên một độ hiếm cho pet này theo tỷ lệ: Normal (40%), Magic (30%), Rare (20%), Unique (9%), Legend (1%).
+  2.  **Sáng tạo Sinh vật**: Dựa vào loại trứng và độ hiếm vừa quyết định, tạo ra một sinh vật hoàn chỉnh.
+  3.  **Tương quan Chỉ số**: Chỉ số cơ bản (base_stats) PHẢI tương quan MẠNH MẼ với độ hiếm. Pet Legend phải mạnh vượt trội so với pet Normal.
+  4.  **Yêu cầu Ngôn ngữ**:
+      * Tất cả các trường mô tả dành cho người chơi như 'species', 'description_vi', 'skill', 'trait' PHẢI là **TIẾNG VIỆT**.
+      * Tạo thêm một trường 'description_en_keywords' chứa các từ khóa mô tả pet bằng **TIẾNG ANH** để dùng cho AI vẽ ảnh.
+  5.  **Định dạng JSON**: Trả về TOÀN BỘ thông tin dưới dạng một object JSON DUY NHẤT, hợp lệ. KHÔNG thêm bất kỳ văn bản nào bên ngoài JSON.
+
+  Cấu trúc JSON bắt buộc:
+  {
+    "rarity": "Độ hiếm bạn đã quyết định (ví dụ: 'Rare')",
+    "element": "Nguyên tố liên quan đến loại trứng (ví dụ: 'Hỏa', 'Thủy', 'Bóng tối')",
+    "species": "Tên loài bằng Tiếng Việt (ví dụ: 'Hỏa Sư Con')",
+    "description_vi": "Một câu mô tả hoành tráng bằng Tiếng Việt",
+    "description_en_keywords": "Các từ khóa mô tả bằng Tiếng Anh, ngắn gọn (e.g., 'fiery lion cub, molten rock armor, glowing eyes')",
+    "base_stats": { "hp": <số>, "mp": <số>, "atk": <số>, "def": <số>, "int": <số>, "spd": <số> },
+    "skill": { "name": "Tên kỹ năng (Tiếng Việt)", "description": "Mô tả kỹ năng (Tiếng Việt)", "cost": <số>, "type": "['Physical', 'Magic', 'Support']", "power": <số> },
+    "trait": { "name": "Tên nội tại (Tiếng Việt)", "description": "Mô tả nội tại (Tiếng Việt)" }
+  }
+  `;
+
+  try {
+    // Sử dụng model chat với cấu hình yêu cầu trả về JSON
+    const result = await this.model.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseMimeType: "application/json",
+      },
+    });
+
+    const response = await result.response;
+    const jsonString = response.text();
+    return JSON.parse(jsonString);
+
+  } catch (error) {
+      await this.logError(error, { 
+          type: 'generatePetFromEgg', 
+          eggType
+      });
+      console.error('Lỗi nghiêm trọng khi gọi AI tạo pet:', error);
+      throw new Error("AI đã thất bại trong việc tạo ra sinh mệnh mới.");
+  }
+}
   /**
    * Đóng kết nối MongoDB
    */

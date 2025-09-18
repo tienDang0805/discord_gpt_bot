@@ -235,5 +235,18 @@ module.exports = [
         // Logic xử lý chính đã nằm trong interactionHandler.js
         // File này chỉ dùng để đăng ký lệnh với Discord.
       }
-    },
+    },{
+      data : new SlashCommandBuilder()
+      .setName('pet')
+      .setDescription('Tương tác với thú cưng EvoVerse AI của bạn')
+      .addSubcommand(subcommand =>
+          subcommand
+              .setName('start')
+              .setDescription('Bắt đầu cuộc hành trình và nhận quả trứng đầu tiên.'))
+      .addSubcommand(subcommand =>
+          subcommand
+              .setName('status')
+              .setDescription('Xem trạng thái chi tiết của thú cưng.')),
+    }
+   
 ];

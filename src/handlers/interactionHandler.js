@@ -4,6 +4,7 @@ const ImageGenerationService = require('../services/imageGenerationService');
 const { sendLongMessage } = require('../utils/messageHelper');
 const TextToAudioService = require('../services/textToAudioService');
 const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle, InteractionType } = require('discord.js');
+const PetService = require('../services/petService'); // Thêm import này
 
 
 module.exports = async (interaction) => {
@@ -13,6 +14,7 @@ module.exports = async (interaction) => {
     const textToAudioService = new TextToAudioService();
     const quizService = interaction.client.quizService; // Truy cập QuizService từ client
     const catchTheWordService = interaction.client.catchTheWordService;
+    const petService = new PetService(); // Khởi tạo petService
 
     if (interaction.isChatInputCommand()) {
         if (interaction.commandName === 'thoitiet') {
@@ -493,6 +495,18 @@ module.exports = async (interaction) => {
             await interaction.showModal(modal);
         }
         // END: Xử lý lệnh Quiz
+        if (interaction.commandName === 'pet') {
+            await interaction.deferReply();
+            const subcommand = interaction.options.getSubcommand();
+
+            if (subcommand === 'start') {
+                await petService.beginHatchingProcess(interaction);
+            } else if (subcommand === 'status') {
+                await petService.showPetStatus(interaction);
+            }
+            return; // Dừng lại sau khi xử lý lệnh pet
+        }
+
         return;
     }
 
@@ -726,6 +740,12 @@ module.exports = async (interaction) => {
                 .setTimestamp();
                 
             await interaction.editReply({ embeds: [privateConfirmationEmbed], components: [] });
+        }
+        if (interaction.customId.startsWith('select_egg_')) {
+            await interaction.deferUpdate(); 
+            const eggType = interaction.customId.replace('select_egg_', '');
+            await petService.hatchEgg(interaction, eggType);
+            return; // Dừng lại sau khi xử lý
         }
     }
     

@@ -9,6 +9,8 @@ const interactionHandler = require('./handlers/interactionHandler');
 const GptChatService = require('./services/gptChatService');
 const QuizService = require('./services/quizService'); // THÊM DÒNG NÀY
 const CatchTheWordService = require('./services/catchTheWordService');
+const mongoose = require('mongoose');
+
 
 
 // Gán QuizService vào client để có thể truy cập từ các handler
@@ -21,6 +23,10 @@ global.discordClient = discordClient;
 // Đăng ký các event handlers
 discordClient.once('ready', () => readyHandler(discordClient));
 discordClient.on('messageCreate', messageHandler);
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log('Kết nối MongoDB Atlas thành công cho EvoVerse AI!'))
+  .catch(err => console.error('Lỗi kết nối MongoDB:', err));
+
 
 // ==========================================================
 // CẬP NHẬT TRÌNH XỬ LÝ INTERACTION
