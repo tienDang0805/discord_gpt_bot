@@ -29,6 +29,10 @@ jobs:
             echo ">>> Di chuyển đến thư mục dự án..."
             cd ${{ secrets.PROJECT_PATH }}
 
+            echo ">>> Đặt lại trạng thái Git cục bộ để tránh xung đột..."
+            git fetch origin
+            git reset --hard origin/main 
+
             echo ">>> Kéo code mới nhất từ nhánh main..."
             git checkout main
             git pull origin main
