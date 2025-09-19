@@ -1,43 +1,92 @@
 // src/services/petService.js
 
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const GptChatService = require('./gptChatService');
-const Pet = require('../model/petSchema');
+const { Pet, UserEggCooldown } = require('../model/petSchema');
 const ImageGenerationService = require('./imageGenerationService');
-const ADMIN_IDS = ['448507913879945216']; // Add this line
-// Khởi tạo các service một lần ở ngoài class để tái sử dụng
-// Đúng theo cách bạn đã làm trong interactionHandler.js
+
+const ADMIN_IDS = ['448507913879945216'];
+const MAX_PETS_PER_USER = 6;
+const EGG_COOLDOWN_HOURS = 24; // 24 giờ
 
 class PetService {
     constructor() {
-        
-      
-        this.gptService = GptChatService; // Sử dụng instance đã có
-        this.imageService = new ImageGenerationService()
+        this.gptService = GptChatService;
+        this.imageService = new ImageGenerationService();
         this.imageGenService = new ImageGenerationService();
-
-        this.DEFAULT_QUESTION_TIME_LIMIT_MS = 15 * 1000; // Mặc định 15 giây
+        this.DEFAULT_QUESTION_TIME_LIMIT_MS = 15 * 1000;
     }
 
     /**
-     * Bắt đầu quá trình chọn trứng cho người chơi.
-     * @param {import('discord.js').Interaction} interaction 
+     * Kiểm tra xem user có thể mở trứng không
+     */
+    async canOpenEgg(userId) {
+        if (ADMIN_IDS.includes(userId)) {
+            return { canOpen: true };
+        }
+
+        const cooldown = await UserEggCooldown.findOne({ userId });
+        if (!cooldown) {
+            return { canOpen: true };
+        }
+
+        const now = new Date();
+        const timeDiff = now - cooldown.lastEggOpenTime;
+        const hoursDiff = timeDiff / (1000 * 60 * 60);
+
+        if (hoursDiff >= EGG_COOLDOWN_HOURS) {
+            return { canOpen: true };
+        }
+
+        const remainingHours = Math.ceil(EGG_COOLDOWN_HOURS - hoursDiff);
+        return { 
+            canOpen: false, 
+            remainingHours 
+        };
+    }
+
+    /**
+     * Cập nhật thời gian mở trứng cuối cùng
+     */
+    async updateEggCooldown(userId) {
+        await UserEggCooldown.findOneAndUpdate(
+            { userId },
+            { lastEggOpenTime: new Date() },
+            { upsert: true }
+        );
+    }
+
+    /**
+     * Bắt đầu quá trình chọn trứng cho người chơi
      */
     async beginHatchingProcess(interaction) {
         const userId = interaction.user.id;
         console.log(`[PetService] Bắt đầu quy trình chọn trứng cho User ID: ${userId}`);
 
         try {
+            // Kiểm tra xem user đã có pet chưa
             const existingPet = await Pet.findOne({ ownerId: userId });
             if (existingPet && !ADMIN_IDS.includes(userId)) {
                 console.log(`[PetService] User ID: ${userId} đã có pet. Ngừng quy trình.`);
-                return interaction.editReply({ content: `❌ Bạn đã có một thú cưng tên là **${existingPet.name}** rồi!`, ephemeral: true });
+                return interaction.editReply({ 
+                    content: `❌ Bạn đã có một thú cưng tên là **${existingPet.name}** rồi! Dùng \`/pet status\` để xem thông tin.`, 
+                    ephemeral: true 
+                });
+            }
+
+            // Kiểm tra cooldown
+            const eggCheck = await this.canOpenEgg(userId);
+            if (!eggCheck.canOpen) {
+                return interaction.editReply({ 
+                    content: `⏰ Bạn phải đợi thêm **${eggCheck.remainingHours} giờ** nữa mới có thể mở trứng tiếp theo!`, 
+                    ephemeral: true 
+                });
             }
 
             const prompt = `Tạo 3 loại trứng giả tưởng riêng biệt cho một game nuôi pet. Với mỗi quả trứng, hãy cung cấp một 'type' (ví dụ: 'Trứng Núi Lửa', 'Trứng Đại Dương', 'Trứng Vực Sâu') và một mô tả ngắn, bí ẩn chỉ trong một câu. Trả về dưới dạng một mảng JSON hợp lệ của các đối tượng, mỗi đối tượng có hai khóa là 'type' và 'description'.`;
             
             console.log(`[PetService] Đang gọi AI để tạo 3 loại trứng...`);
-            const response = await this.gptService.generatePKResponse(prompt); // Dùng hàm generatePKResponse vẫn ổn cho tác vụ đơn giản này
+            const response = await this.gptService.generatePKResponse(prompt);
             const eggs = JSON.parse(response);
             console.log(`[PetService] AI đã trả về ${eggs.length} loại trứng.`);
 
@@ -67,20 +116,38 @@ class PetService {
     }
 
     /**
-     * Xử lý việc nở trứng sau khi người chơi đã chọn.
-     * @param {import('discord.js').Interaction} interaction 
-     * @param {string} eggType Loại trứng đã chọn.
+     * Xử lý việc nở trứng sau khi người chơi đã chọn
      */
     async hatchEgg(interaction, eggType) {
         const userId = interaction.user.id;
         console.log(`[PetService] Bắt đầu nở trứng loại "${eggType}" cho User ID: ${userId}`);
 
         try {
-            await interaction.message.delete();
+            // Gửi message trứng đang nở ngay lập tức
+            const hatchingEmbed = new EmbedBuilder()
+                .setTitle('🥚 Trứng Đang Nở...')
+                .setDescription('✨ Có điều gì đó đang xảy ra bên trong quả trứng...\n⏰ Vui lòng chờ trong giây lát...')
+                .setColor(0xFFD700);
+            
+            await interaction.update({ embeds: [hatchingEmbed], components: [] });
+
+            // Thêm delay để tạo cảm giác hồi hộp
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
+            // Kiểm tra lại xem user đã có pet chưa trước khi tạo
+            const existingPet = await Pet.findOne({ ownerId: userId });
+            if (existingPet && !ADMIN_IDS.includes(userId)) {
+                return interaction.editReply({ 
+                    embeds: [new EmbedBuilder()
+                        .setTitle('❌ Lỗi')
+                        .setDescription(`Bạn đã có thú cưng **${existingPet.name}** rồi!`)
+                        .setColor(0xFF0000)
+                    ], 
+                    components: [] 
+                });
+            }
 
             console.log(`[PetService] Đang gọi hàm generatePetFromEgg với loại trứng: ${eggType}`);
-
-            
             const petData = await this.gptService.generatePetFromEgg(eggType);
             console.log(`[PetService] AI đã tạo xong dữ liệu pet cho User ID: ${userId}`, petData);
 
@@ -89,7 +156,6 @@ class PetService {
 
             const imageResult = await this.imageService.generateImage(imagePrompt);
             if (!imageResult.success) {
-                // Ném ra lỗi để catch block xử lý
                 throw new Error(imageResult.error || "AI không thể tạo hình ảnh cho pet.");
             }
             console.log(`[PetService] Tạo ảnh thành công cho User ID: ${userId}`);
@@ -119,9 +185,12 @@ class PetService {
             await newPet.save();
             console.log(`[PetService] Đã lưu pet mới vào DB thành công cho User ID: ${userId}`);
 
+            // Cập nhật cooldown
+            await this.updateEggCooldown(userId);
+
             const rarityColors = { Normal: 0xAAAAAA, Magic: 0x00BFFF, Rare: 0xFFD700, Unique: 0x9400D3, Legend: 0xFF4500 };
             const embed = new EmbedBuilder()
-                .setTitle(`🎉 CHÚC MỪNG! THÚ CƯNG CỦA BẠN ĐÃ NỞ! 🎉`)
+                .setTitle(`🎉 CHÚC MỪNG! THÚ CƯNG CỦA BạN ĐÃ NỞ! 🎉`)
                 .setDescription(`Từ trong quả trứng **${eggType.replace(/_/g, ' ')}**, một **${petData.species}** đã ra đời!`)
                 .setColor(rarityColors[petData.rarity] || 0xFFFFFF)
                 .addFields(
@@ -135,22 +204,42 @@ class PetService {
                 .setImage('attachment://pet-image.png')
                 .setFooter({ text: `Hãy dùng /pet status để xem chi tiết nhé!` });
 
-                await interaction.editReply({ 
-                    content: '',
+            // Gửi kết quả cuối bằng cách edit message đang nở
+            try {
+                await hatchingMessage.edit({ 
+                    content: `<@${userId}>`,
                     embeds: [embed], 
-                    files: [{ attachment: imageResult.imageBuffer, name: 'pet-image.png' }] 
+                    files: [{ attachment: imageResult.imageBuffer, name: 'pet-image.png' }]
                 });
+                console.log(`[PetService] Updated hatching message with final result`);
+            } catch (editError) {
+                console.error(`[PetService] Failed to edit hatching message:`, editError.message);
+                // Fallback: gửi message mới
+                await interaction.channel.send({ 
+                    content: `<@${userId}>`,
+                    embeds: [embed], 
+                    files: [{ attachment: imageResult.imageBuffer, name: 'pet-image.png' }]
+                });
+            }
             console.log(`[PetService] Đã gửi thông báo pet nở thành công cho User ID: ${userId}`);
 
         } catch (error) {
             console.error(`[PetService][CRITICAL ERROR] Lỗi trong quá trình hatchEgg cho User ID: ${userId}:`, error);
-            await interaction.editReply(`❌ Bot gặp lỗi nghiêm trọng trong quá trình nở trứng. Lỗi: ${error.message}. Vui lòng thử lại sau.`);
+            const errorEmbed = new EmbedBuilder()
+                .setTitle('❌ Lỗi')
+                .setDescription(`Bot gặp lỗi trong quá trình nở trứng: ${error.message}`)
+                .setColor(0xFF0000);
+                
+            // Send error as new message
+            await interaction.channel.send({ 
+                content: `<@${userId}>`, 
+                embeds: [errorEmbed] 
+            });
         }
     }
 
     /**
-     * Hiển thị bảng trạng thái chi tiết của pet.
-     * @param {import('discord.js').Interaction} interaction 
+     * Hiển thị trạng thái pet của người dùng
      */
     async showPetStatus(interaction) {
         const userId = interaction.user.id;
@@ -160,10 +249,28 @@ class PetService {
             const pet = await Pet.findOne({ ownerId: userId });
             if (!pet) {
                 console.log(`[PetService] Không tìm thấy pet cho User ID: ${userId}.`);
-                return interaction.editReply({ content: `❌ Bạn chưa có thú cưng. Dùng \`/pet start\` để bắt đầu!`, ephemeral: true });
+                return interaction.editReply({ 
+                    content: `❌ Bạn chưa có thú cưng nào. Dùng \`/pet start\` để bắt đầu!`, 
+                    ephemeral: true 
+                });
             }
-            console.log(`[PetService] Đã tìm thấy pet "${pet.name}" cho User ID: ${userId}.`);
 
+            // Hiển thị thông tin pet trực tiếp
+            return this.showSinglePetStatus(interaction, pet);
+
+        } catch (error) {
+            console.error(`[PetService][ERROR] Lỗi trong showPetStatus cho User ID: ${userId}:`, error);
+            await interaction.editReply("❌ Có lỗi xảy ra khi lấy thông tin pet của bạn.");
+        }
+    }
+
+    /**
+     * Hiển thị thông tin chi tiết của một pet cụ thể
+     */
+    async showSinglePetStatus(interaction, pet) {
+        console.log(`[PetService] Hiển thị thông tin pet "${pet.name}" ID: ${pet._id}`);
+
+        try {
             console.log(`[PetService] Đang tái tạo ảnh cho pet "${pet.name}"...`);
             const imageResult = await this.imageService.generateImage(pet.imageBasePrompt);
             if (!imageResult.success) {
@@ -193,18 +300,138 @@ class PetService {
                 embed.setThumbnail('attachment://pet-image.png');
             }
 
-            pet.skills.forEach(s => embed.addFields({ name: `💥 Kỹ năng: ${s.name}`, value: `*${s.description}* (Cost: ${s.cost} MP)`}));
-            pet.traits.forEach(t => embed.addFields({ name: `💡 Nội tại: ${t.name}`, value: `*${t.description}*`}));
+            pet.skills.forEach(s => embed.addFields({ 
+                name: `💥 Kỹ năng: ${s.name}`, 
+                value: `*${s.description}* (Cost: ${s.cost} MP)` 
+            }));
+            pet.traits.forEach(t => embed.addFields({ 
+                name: `💡 Nội tại: ${t.name}`, 
+                value: `*${t.description}*` 
+            }));
             
             await interaction.editReply({ 
                 embeds: [embed],
-                files: imageResult.success ? [{ attachment: imageResult.imageBuffer, name: 'pet-image.png' }] : []
+                files: imageResult.success ? [{ attachment: imageResult.imageBuffer, name: 'pet-image.png' }] : [],
+                components: []
             });
-            console.log(`[PetService] Đã gửi bảng trạng thái thành công cho User ID: ${userId}`);
+            console.log(`[PetService] Đã gửi bảng trạng thái thành công cho pet "${pet.name}"`);
 
         } catch (error) {
-            console.error(`[PetService][ERROR] Lỗi trong showPetStatus cho User ID: ${userId}:`, error);
-            await interaction.editReply("❌ Có lỗi xảy ra khi lấy thông tin pet của bạn.");
+            console.error(`[PetService][ERROR] Lỗi trong showSinglePetStatus cho pet "${pet.name}":`, error);
+            await interaction.editReply("❌ Có lỗi xảy ra khi hiển thị thông tin pet.");
+        }
+    }
+
+    /**
+     * Xử lý khi user chọn pet từ select menu
+     */
+    async handlePetSelection(interaction, petId) {
+        try {
+            const pet = await Pet.findById(petId);
+            if (!pet || pet.ownerId !== interaction.user.id) {
+                return interaction.editReply({ 
+                    content: '❌ Không tìm thấy thú cưng này!', 
+                    ephemeral: true 
+                });
+            }
+
+            await this.showSinglePetStatus(interaction, pet);
+        } catch (error) {
+            console.error(`[PetService][ERROR] Lỗi trong handlePetSelection:`, error);
+            await interaction.editReply("❌ Có lỗi xảy ra khi hiển thị thông tin pet.");
+        }
+    }
+
+    /**
+     * Hiển thị menu để thả pet
+     */
+    async showReleasePetMenu(interaction) {
+        const userId = interaction.user.id;
+        console.log(`[PetService] Hiển thị xác nhận thả pet cho User ID: ${userId}`);
+
+        try {
+            const pet = await Pet.findOne({ ownerId: userId });
+            if (!pet) {
+                return interaction.editReply({ 
+                    content: `❌ Bạn chưa có thú cưng nào để thả.`, 
+                    ephemeral: true 
+                });
+            }
+
+            // Hiển thị xác nhận trực tiếp thay vì menu chọn
+            return this.confirmReleasePet(interaction, pet._id);
+
+        } catch (error) {
+            console.error(`[PetService][ERROR] Lỗi trong showReleasePetMenu:`, error);
+            await interaction.editReply("❌ Có lỗi xảy ra khi hiển thị menu thả pet.");
+        }
+    }
+
+    /**
+     * Xác nhận thả pet
+     */
+    async confirmReleasePet(interaction, petId) {
+        try {
+            const pet = await Pet.findById(petId);
+            if (!pet || pet.ownerId !== interaction.user.id) {
+                return interaction.editReply({ 
+                    content: '❌ Không tìm thấy thú cưng này!', 
+                    ephemeral: true 
+                });
+            }
+
+            const embed = new EmbedBuilder()
+                .setTitle(`🕊️ Xác Nhận Thả ${pet.name}`)
+                .setDescription(`Bạn có chắc chắn muốn thả **${pet.name}** (${pet.rarity} - ${pet.element}) về tự nhiên?\n\n⚠️ **Hành động này không thể hoàn tác!**`)
+                .setColor(0xFF6B6B);
+
+            const confirmButton = new ButtonBuilder()
+                .setCustomId(`confirm_release_${petId}`)
+                .setLabel('Xác Nhận Thả')
+                .setStyle(ButtonStyle.Danger)
+                .setEmoji('🕊️');
+
+            const cancelButton = new ButtonBuilder()
+                .setCustomId('cancel_release')
+                .setLabel('Hủy')
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('❌');
+
+            const row = new ActionRowBuilder().addComponents(confirmButton, cancelButton);
+
+            await interaction.editReply({ embeds: [embed], components: [row] });
+
+        } catch (error) {
+            console.error(`[PetService][ERROR] Lỗi trong confirmReleasePet:`, error);
+            await interaction.editReply("❌ Có lỗi xảy ra.");
+        }
+    }
+
+    /**
+     * Thực hiện thả pet
+     */
+    async releasePet(interaction, petId) {
+        try {
+            const pet = await Pet.findById(petId);
+            if (!pet || pet.ownerId !== interaction.user.id) {
+                return interaction.editReply({ 
+                    content: '❌ Không tìm thấy thú cưng này!', 
+                    ephemeral: true 
+                });
+            }
+
+            await Pet.findByIdAndDelete(petId);
+
+            const embed = new EmbedBuilder()
+                .setTitle(`🕊️ ${pet.name} Đã Được Thả`)
+                .setDescription(`**${pet.name}** đã được thả về tự nhiên và sẽ sống hạnh phúc ở đó.\n\nCảm ơn bạn đã chăm sóc ${pet.name}! 💚`)
+                .setColor(0x2ECC71);
+
+            await interaction.editReply({ embeds: [embed], components: [] });
+
+        } catch (error) {
+            console.error(`[PetService][ERROR] Lỗi trong releasePet:`, error);
+            await interaction.editReply("❌ Có lỗi xảy ra khi thả pet.");
         }
     }
 }

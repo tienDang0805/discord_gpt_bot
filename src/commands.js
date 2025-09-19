@@ -236,17 +236,21 @@ module.exports = [
         // File này chỉ dùng để đăng ký lệnh với Discord.
       }
     },{
-      data : new SlashCommandBuilder()
+      data: new SlashCommandBuilder()
       .setName('pet')
-      .setDescription('Tương tác với thú cưng EvoVerse AI của bạn')
+      .setDescription('Quản lý thú cưng của bạn')
       .addSubcommand(subcommand =>
           subcommand
               .setName('start')
-              .setDescription('Bắt đầu cuộc hành trình và nhận quả trứng đầu tiên.'))
+              .setDescription('Bắt đầu hành trình với một quả trứng mới'))
       .addSubcommand(subcommand =>
           subcommand
               .setName('status')
-              .setDescription('Xem trạng thái chi tiết của thú cưng.')),
+              .setDescription('Xem thông tin chi tiết của thú cưng'))
+      .addSubcommand(subcommand =>
+          subcommand
+              .setName('release')
+              .setDescription('Thả thú cưng về tự nhiên')),
     }
    
 ];

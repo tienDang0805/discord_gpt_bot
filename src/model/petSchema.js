@@ -16,7 +16,7 @@ const traitSchema = new mongoose.Schema({
 }, { _id: false });
 
 const petSchema = new mongoose.Schema({
-    ownerId: { type: String, required: true, unique: true, index: true },
+    ownerId: { type: String, required: true, index: true }, // KHÔNG unique để cho phép nhiều pets
     name: { type: String, required: true },
     species: { type: String, required: true },
     description: { type: String, default: '' },
@@ -42,4 +42,13 @@ const petSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now },
 });
 
-module.exports = mongoose.model('Pet', petSchema);
+// Schema cho việc theo dõi lần mở trứng cuối cùng
+const userEggCooldownSchema = new mongoose.Schema({
+    userId: { type: String, required: true, unique: true },
+    lastEggOpenTime: { type: Date, default: Date.now },
+});
+
+const Pet = mongoose.model('Pet', petSchema);
+const UserEggCooldown = mongoose.model('UserEggCooldown', userEggCooldownSchema);
+
+module.exports = { Pet, UserEggCooldown };
