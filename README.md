@@ -25,7 +25,11 @@ Tài liệu này cung cấp hướng dẫn kỹ thuật chi tiết về việc c
       * **Audio-to-Text**: Chuyển đổi dữ liệu giọng nói từ các tệp âm thanh thành văn bản.
       * **Video-to-Text**: Phân tích và mô tả nội dung từ các tệp video đính kèm.
   * **Image Generation**: Tạo hình ảnh từ một mô tả văn bản (`prompt`) thông qua lệnh chuyên dụng.
+<<<<<<< HEAD
   * **Text-to-Speech (TTS)**: Tham gia kênh thoại (`voice channel`) và đọc văn bản được cung cấp bởi người dùng.
+=======
+  * **Text-to-Speech (TTS)**: Tham gia kênh thoại (`voice channel`) và trả lời câu hỏi của người dùng.
+>>>>>>> 1c652c6f7025d1df5eff37b240e28ee40313f35d
   * **Weather Data Retrieval**: Cung cấp thông tin thời tiết thời gian thực dựa trên `API`.
   * **Real-time Search**: Thực hiện tìm kiếm bằng các công cụ bên ngoài và trả về kết quả.
   * **AI-Powered Games**: Tổ chức các trò chơi tương tác như đố vui và đuổi hình bắt chữ.
@@ -170,8 +174,13 @@ Khi có một `push event` lên nhánh `main` (`main branch`), `workflow` sẽ t
 
 ## 6. License
 
+<<<<<<< HEAD
 Dự án này được phát hành dưới Giấy phép MIT. Vui lòng tham khảo file `LICENSE` để biết thêm chi tiết.
 
 -----
 
 Mong rằng lần này sẽ giải quyết dứt điểm vấn đề. Một lần nữa xin lỗi bạn vì đã làm mất thời gian.
+=======
+
+-----
+>>>>>>> 1c652c6f7025d1df5eff37b240e28ee40313f35d
