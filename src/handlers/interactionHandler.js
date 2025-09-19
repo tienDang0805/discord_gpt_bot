@@ -114,8 +114,16 @@ async function handlePetCommands(interaction, petService) {
             await petService.beginHatchingProcess(interaction);
             break;
             
+        case 'list':
+            await petService.showPetList(interaction);
+            break;
+            
         case 'status':
-            await petService.showPetStatus(interaction);
+            // Deprecated - redirect to list
+            await interaction.editReply({ 
+                content: '⚠️ Lệnh này đã được thay thế. Hãy dùng `/pet list` để xem danh sách pets của bạn!', 
+                ephemeral: true 
+            });
             break;
             
         case 'release':
@@ -762,25 +770,84 @@ async function handleButtonInteractions(interaction, services) {
         });
         return;
     }
-}
-
-// ===== SELECT MENU HANDLERS =====
-async function handleSelectMenus(interaction, services) {
-    const { petService } = services;
-    
-    // Pet status selection
-    if (interaction.customId === 'select_pet_status') {
-        const petId = interaction.values[0].replace('pet_', '');
+    if (interaction.customId.startsWith('view_pet_')) {
+        const petId = interaction.customId.replace('view_pet_', '');
+        console.log(`[InteractionHandler] View pet button pressed for petId: ${petId}`);
+        
         await interaction.deferUpdate();
-        await petService.handlePetSelection(interaction, petId);
+        await petService.showSinglePetStatus(interaction, petId);
         return;
     }
-    
-    // Pet release selection
-    if (interaction.customId === 'select_pet_release') {
-        const petId = interaction.values[0].replace('release_', '');
+
+    // Pet release buttons (trực tiếp thả pet)
+    if (interaction.customId.startsWith('release_pet_')) {
+        const petId = interaction.customId.replace('release_pet_', '');
+        console.log(`[InteractionHandler] Release pet button pressed for petId: ${petId}`);
+        
         await interaction.deferUpdate();
         await petService.confirmReleasePet(interaction, petId);
         return;
+    }
+}
+// ===== SELECT MENU HANDLERS ===== (thêm vào cuối file interaction handler)
+async function handleSelectMenus(interaction, services) {
+    const { petService } = services;
+    
+    console.log(`[DEBUG] Select menu interaction: ${interaction.customId}`);
+    console.log(`[DEBUG] Values:`, interaction.values);
+    
+    try {
+        // Pet list selection - xem status của pet
+        if (interaction.customId === 'pet_list_select') {
+            const value = interaction.values[0];
+            console.log(`[DEBUG] Pet list select value: ${value}`);
+            
+            if (value.startsWith('pet_status_')) {
+                const petId = value.replace('pet_status_', '');
+                console.log(`[DEBUG] Extracted petId: ${petId}`);
+                
+                await interaction.deferUpdate();
+                await petService.showSinglePetStatus(interaction, petId);
+            }
+            return;
+        }
+        
+        // Pet release selection - chọn pet để thả
+        if (interaction.customId === 'pet_release_select') {
+            const value = interaction.values[0];
+            console.log(`[DEBUG] Pet release select value: ${value}`);
+            
+            if (value.startsWith('pet_release_')) {
+                const petId = value.replace('pet_release_', '');
+                console.log(`[DEBUG] Extracted release petId: ${petId}`);
+                
+                await interaction.deferUpdate();
+                await petService.confirmReleasePet(interaction, petId);
+            }
+            return;
+        }
+        
+        console.log(`[DEBUG] Unknown select menu: ${interaction.customId}`);
+        
+    } catch (error) {
+        console.error(`[DEBUG] Error in handleSelectMenus:`, error);
+        console.error(`[DEBUG] Error stack:`, error.stack);
+        
+        // Prevent interaction failed error
+        try {
+            if (!interaction.replied && !interaction.deferred) {
+                await interaction.reply({ 
+                    content: '❌ Có lỗi xảy ra khi xử lý lựa chọn của bạn.', 
+                    ephemeral: true 
+                });
+            } else {
+                await interaction.editReply({ 
+                    content: '❌ Có lỗi xảy ra khi xử lý lựa chọn của bạn.',
+                    components: []
+                });
+            }
+        } catch (replyError) {
+            console.error(`[DEBUG] Could not send error reply:`, replyError);
+        }
     }
 }

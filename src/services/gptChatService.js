@@ -343,7 +343,6 @@ ${process.env.SYSTEM_PROMPT}
         model: CHAT_MODEL.model,
         generationConfig: {
           ...CHAT_MODEL.generationConfig,
-          // Cài đặt đặc biệt để buộc AI trả về JSON
           responseMimeType: "application/json",
         },
         safetySettings: CHAT_MODEL.safetySettings,
@@ -940,56 +939,244 @@ CHỈ TRẢ VỀ MỘT MẢNG JSON HỢP LỆ. KHÔNG BAO GỒM BẤT KỲ GIẢ
     return []; 
   }
 }
+// Thêm vào GptChatService.js
+
+// Enhanced generatePetFromEgg với description_en_keywords cực kỳ chi tiết
+
+// Enhanced generatePetFromEgg với description_en_keywords cực kỳ chi tiết
+
 async generatePetFromEgg(eggType) {
-  // Prompt này yêu cầu AI làm 2 việc quan trọng:
-  // 1. Toàn bộ mô tả cho người dùng (description_vi, skill, trait) phải bằng Tiếng Việt.
-  // 2. Cung cấp một chuỗi từ khóa tiếng Anh (description_en_keywords) để dùng cho việc tạo ảnh.
-  const prompt = `
-  Bạn là một AI quản trò game "EvoVerse" siêu cấp.
-  Một người chơi đã chọn "${eggType.replace(/_/g, ' ')}". Nhiệm vụ của bạn là tạo ra một sinh vật giả tưởng hoàn chỉnh từ quả trứng này.
+  console.log("eggType",eggType)
+  const prompt = `Bạn là một AI Sáng Tạo Sinh Vật, một nhà sinh vật học của các thế giới giả tưởng, có khả năng tạo ra một hệ sinh thái hoàn chỉnh từ những sinh vật nhỏ bé, phổ thông nhất cho đến những huyền thoại vĩ đại.
+Nhiệm vụ của bạn là tạo ra một **sinh vật giả tưởng** hoàn toàn độc đáo dựa trên nguồn cảm hứng: "${eggType.replace(/_/g, ' ')}".
 
-  BẮT BUỘC LÀM THEO CÁC BƯỚC SAU:
-  1.  **Tự quyết định Độ hiếm**: Tự chọn ngẫu nhiên một độ hiếm cho pet này theo tỷ lệ: Normal (40%), Magic (30%), Rare (20%), Unique (9%), Legend (1%).
-  2.  **Sáng tạo Sinh vật**: Dựa vào loại trứng và độ hiếm vừa quyết định, tạo ra một sinh vật hoàn chỉnh.
-  3.  **Tương quan Chỉ số**: Chỉ số cơ bản (base_stats) PHẢI tương quan MẠNH MẼ với độ hiếm. Pet Legend phải mạnh vượt trội so với pet Normal.
-  4.  **Yêu cầu Ngôn ngữ**:
-      * Tất cả các trường mô tả dành cho người chơi như 'species', 'description_vi', 'skill', 'trait' PHẢI là **TIẾNG VIỆT**.
-      * Tạo thêm một trường 'description_en_keywords' chứa các từ khóa mô tả pet bằng **TIẾNG ANH** để dùng cho AI vẽ ảnh.
-  5.  **Định dạng JSON**: Trả về TOÀN BỘ thông tin dưới dạng một object JSON DUY NHẤT, hợp lệ. KHÔNG thêm bất kỳ văn bản nào bên ngoài JSON.
+🔥 QUY TẮC VÀNG VỀ SÁNG TẠO ĐỘ HIẾM (CỰC KỲ QUAN TRỌNG):
+Không phải mọi sinh vật lấy cảm hứng từ thần thoại đều phải là 'Legend' hay 'Unique'. Bạn BẮT BUỘC phải tuân thủ tỷ lệ phần trăm độ hiếm.
+- **Đối với độ hiếm thấp (Normal, Magic):** Hãy sáng tạo ra các sinh vật **phổ biến, ít được biết đến, các loài phụ thuộc, hoặc phiên bản 'sơ khai', 'non nớt'** của các huyền thoại lớn.
+- **VÍ DỤ:** Từ nguồn cảm hứng "Phượng Hoàng", thay vì luôn tạo ra Phượng Hoàng (Legend), bạn có thể tạo ra:
+    - **"Chim Tro Tàn" (Normal):** Một loài chim nhỏ sống bằng tro bụi mà Phượng Hoàng để lại.
+    - **"Linh Tước Lửa" (Magic):** Một loài chim có khả năng tạo ra tia lửa nhỏ, được coi là họ hàng xa của Phượng Hoàng.
+    - **"Phượng Hoàng Thiếu Niên" (Rare):** Một con phượng hoàng trẻ chưa bộc lộ hết sức mạnh.
 
-  Cấu trúc JSON bắt buộc:
-  {
-    "rarity": "Độ hiếm bạn đã quyết định (ví dụ: 'Rare')",
-    "element": "Nguyên tố liên quan đến loại trứng (ví dụ: 'Hỏa', 'Thủy', 'Bóng tối')",
-    "species": "Tên loài bằng Tiếng Việt (ví dụ: 'Hỏa Sư Con')",
-    "description_vi": "Một câu mô tả hoành tráng bằng Tiếng Việt",
-    "description_en_keywords": "Các từ khóa mô tả bằng Tiếng Anh, ngắn gọn (e.g., 'fiery lion cub, molten rock armor, glowing eyes')",
-    "base_stats": { "hp": <số>, "mp": <số>, "atk": <số>, "def": <số>, "int": <số>, "spd": <số> },
-    "skill": { "name": "Tên kỹ năng (Tiếng Việt)", "description": "Mô tả kỹ năng (Tiếng Việt)", "cost": <số>, "type": "['Physical', 'Magic', 'Support']", "power": <số> },
-    "trait": { "name": "Tên nội tại (Tiếng Việt)", "description": "Mô tả nội tại (Tiếng Việt)" }
+🚨 **CHỈ DẪN CHỐT HẠ:** Nguồn cảm hứng "${eggType.replace(/_/g, ' ')}" chỉ để gợi ý về **chủ đề, nguyên tố, ngoại hình và bộ kỹ năng**. Nó **TUYỆT ĐỐI KHÔNG ĐƯỢC PHÉP** ảnh hưởng đến quyết định về độ hiếm. Độ hiếm phải được quyết định **HOÀN TOÀN NGẪU NHIÊN** theo đúng tỷ lệ phần trăm trong bảng dưới đây.
+
+⚡ BƯỚC 1: CHỌN NGUỒN CẢM HỨNG (ngẫu nhiên cao):
+
+🇨🇳 PHƯƠNG ĐÔNG:
+- SƠN HẢI KINH: Cửu vĩ hồ, Phượng Hoàng, Kỳ Lân, Bạch Hổ, Huyền Vũ, Thanh Long, Chu Tước, Taotie, Hundun
+- RỒNG PHƯƠNG ĐÔNG: Ứng Long, Long Vương, Khai Minh Thú
+- LINH THÚ VIỆT NAM: Rồng Lạc Long Quân, Phượng Âu Cơ, Linh Quy, Kỳ Lân Việt
+- NHẬT BẢN: Kitsune, Tengu, Kappa, Ryuu, Raiju, Inugami, Nekomata, Oni
+- HÀN QUỐC: Haetae, Bulgae, Inmyeonjo, Bonghwang
+
+🏰 PHƯƠNG TÂY:
+- HY LẠP: Griffin, Phoenix, Sphinx, Pegasus, Hippogryph, Chimera, Hydra, Basilisk
+- BẮC ÂU: Fenrir, Sleipnir, Jormungandr, Ratatoskr, Huginn & Muninn
+- CELTIC: Selkie, Kelpie, Banshee, Cu-sith, Each-uisge
+- MEDIEVAL: Wyvern, Basilisk, Cockatrice, Manticore
+
+🌌 NGUYÊN TỐ & VŨ TRỤ:
+- CƠ GIỚI: Steampunk automatons, Clockwork creatures, Crystal-tech beings, Runic golems
+- VŨ TRỤ: Nebula spirits, Meteor beasts, Black hole entities, Quasar beings, Pulsar creatures
+- THỜI GIAN: Chronos beasts, Temporal spirits, Time-warped entities
+- NGUYÊN TỐ: Plasma elementals, Shadow-flame beings, Ice-lightning spirits, Void-light entities
+
+⚡ BƯỚC 2: CHỌN ĐỘ HIẾM VÀ TÍNH TOÁN STATS (PHẢI TUÂN THỦ NGHIÊM NGẶT):
+
+BẢNG ĐỘ HIẾM VÀ STATS:
+- Normal (40%): 
+* Total Stats: 250-350
+* HP: 40-60, MP: 20-35, ATK: 25-40, DEF: 25-40, INT: 20-35, SPD: 25-40
+* Traits: 1 trait
+* Skills: 2 skills
+- Magic (30%): 
+* Total Stats: 350-450
+* HP: 55-75, MP: 35-50, ATK: 35-55, DEF: 35-55, INT: 30-50, SPD: 35-55
+* Traits: 1-2 traits
+* Skills: 3 skills
+- Rare (20%): 
+* Total Stats: 450-600
+* HP: 70-100, MP: 50-75, ATK: 50-75, DEF: 50-75, INT: 45-70, SPD: 50-75
+* Traits: 2-3 traits
+* Skills: 3-4 skills
+- Unique (9%): 
+* Total Stats: 600-800
+* HP: 95-130, MP: 70-100, ATK: 70-100, DEF: 70-100, INT: 65-95, SPD: 70-100
+* Traits: 3 traits
+* Skills: 4 skills
+- Legend (1%): 
+* Total Stats: 800-1000
+* HP: 125-170, MP: 95-130, ATK: 95-130, DEF: 95-130, INT: 90-125, SPD: 95-130
+* Traits: 4 traits
+* Skills: 4 skills
+
+⚡ BƯỚC 3: TYPES SKILLS HỢP LỆ (QUAN TRỌNG - CHỈ DÙNG CÁC TYPE SAU):
+['Physical', 'Magic', 'Support', 'Fire', 'Water', 'Earth', 'Air', 'Light', 'Dark', 'Cosmic', 'Temporal', 'Mechanical']
+
+⚡ BƯỚC 4: TẠO DESCRIPTION_EN_KEYWORDS CỰC KỲ CHI TIẾT
+Đây là phần QUAN TRỌNG NHẤT để AI tạo ảnh đẹp. Hãy mô tả cực kỳ chi tiết bằng tiếng Anh:
+
+FORMAT KEYWORDS: "creature type, physical features, colors, textures, magical auras, cultural elements, pose/action, background elements, art style"
+
+VÍ DỤ KEYWORDS:
+"nine-tailed fox spirit, fluffy silver fur, glowing blue flames on tail tips, jade ornaments, flowing silk ribbons, traditional chinese patterns, sitting gracefully, cherry blossoms floating, ethereal mist, oriental art style, ink painting aesthetic"
+
+⚡ BƯỚC 5: JSON HOÀN CHỈNH (PHẢI CHÍNH XÁC):
+
+{
+"rarity": "Độ hiếm đã chọn ngẫu nhiên theo tỷ lệ trên",
+"element": "Nguyên tố phù hợp (Hỏa, Thủy, Thổ, Khí, Ánh sáng, Bóng tối, Cơ giới, Vũ trụ, etc.)",
+"species": "Tên loài bằng Tiếng Việt, kết hợp nguồn cảm hứng", 
+"description_vi": "Mô tả hoành tráng, thơ mộng bằng Tiếng Việt, 2-3 câu",
+"description_en_keywords": "Từ khóa cực kỳ chi tiết bằng tiếng Anh để AI vẽ ảnh đẹp",
+"base_stats": { 
+  "hp": "<số phù hợp với rarity theo bảng trên>", 
+  "mp": "<số phù hợp với rarity theo bảng trên>", 
+  "atk": "<số phù hợp với rarity theo bảng trên>", 
+  "def": "<số phù hợp với rarity theo bảng trên>", 
+  "int": "<số phù hợp với rarity theo bảng trên>", 
+  "spd": "<số phù hợp với rarity theo bảng trên>" 
+},
+"skills": [
+  { 
+    "name": "Tên kỹ năng Tiếng Việt, phù hợp với nguồn gốc thần thoại", 
+    "description": "Mô tả kỹ năng Tiếng Việt, chi tiết và ấn tượng", 
+    "cost": "<MP cost hợp lý>", 
+    "type": "CHỈ CHỌN TỪ DANH SÁCH: Physical, Magic, Support, Fire, Water, Earth, Air, Light, Dark, Cosmic, Temporal, Mechanical", 
+    "power": "<sức mạnh phù hợp với rarity>" 
   }
-  `;
+],
+"traits": [
+  { 
+    "name": "Tên nội tại Tiếng Việt, thể hiện bản chất của sinh vật", 
+    "description": "Mô tả nội tại Tiếng Việt, mang tính chất thần thoại" 
+  }
+]
+}
+
+🎯 LƯU Ý QUAN TRỌNG:
+- DESCRIPTION_EN_KEYWORDS phải CỰC KỲ CHI TIẾT để AI vẽ ảnh đẹp
+- Skills type CHỈ được chọn từ danh sách hợp lệ ở trên
+- Stats phải chính xác theo từng rarity level
+- Số lượng skills và traits phải đúng theo rarity
+- Tạo sinh vật hoàn toàn MỚI, không copy từ ví dụ
+- Tính ngẫu nhiên cao là ưu tiên hàng đầu
+- Skills phải có power tương ứng với rarity (Normal: 15-30, Magic: 25-45, Rare: 40-65, Unique: 60-85, Legend: 80-120)
+`;
 
   try {
-    // Sử dụng model chat với cấu hình yêu cầu trả về JSON
-    const result = await this.model.generateContent({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: "application/json",
-      },
-    });
+      const result = await this.model.generateContent({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: {
+              responseMimeType: "application/json",
+          },
+      });
 
-    const response = await result.response;
-    const jsonString = response.text();
-    return JSON.parse(jsonString);
+      const response = await result.response;
+      const jsonString = response.text();
+      const petData = JSON.parse(jsonString);
+      
+      this.validatePetStats(petData);
+      this.validateSkillTypes(petData);
+      this.validateRarityConsistency(petData);
+      this.validateImageKeywords(petData);
+      
+      return petData;
 
   } catch (error) {
       await this.logError(error, { 
           type: 'generatePetFromEgg', 
           eggType
       });
-      console.error('Lỗi nghiêm trọng khi gọi AI tạo pet:', error);
+      console.error('[generatePetFromEgg] Critical error:', error);
       throw new Error("AI đã thất bại trong việc tạo ra sinh mệnh mới.");
+  }
+}
+
+// Enhanced validation methods
+validatePetStats(petData) {
+  const rarityRanges = {
+      'Normal': { total: { min: 250, max: 350 }, individual: { min: 20, max: 60 } },
+      'Magic': { total: { min: 350, max: 450 }, individual: { min: 30, max: 75 } },
+      'Rare': { total: { min: 450, max: 600 }, individual: { min: 45, max: 100 } },
+      'Unique': { total: { min: 600, max: 800 }, individual: { min: 65, max: 130 } },
+      'Legend': { total: { min: 800, max: 1000 }, individual: { min: 90, max: 170 } }
+  };
+  
+  const range = rarityRanges[petData.rarity];
+  if (!range) {
+      console.warn(`[Validation] Unknown rarity: ${petData.rarity}`);
+      return;
+  }
+  
+  const stats = petData.base_stats;
+  const totalStats = stats.hp + stats.mp + stats.atk + stats.def + stats.int + stats.spd;
+  
+  // Validate total stats
+  if (totalStats < range.total.min * 0.8) {
+      console.warn(`[Validation] Pet stats too low for ${petData.rarity}: ${totalStats} < ${range.total.min}`);
+      // Auto-adjust if significantly below expected
+      const boost = Math.ceil((range.total.min - totalStats) / 6);
+      Object.keys(stats).forEach(stat => {
+          stats[stat] = Math.max(stats[stat] + boost, range.individual.min);
+      });
+  }
+  
+  if (totalStats > range.total.max * 1.2) {
+      console.warn(`[Validation] Pet stats too high for ${petData.rarity}: ${totalStats} > ${range.total.max}`);
+  }
+}
+
+validateSkillTypes(petData) {
+  const validTypes = ['Physical', 'Magic', 'Support', 'Fire', 'Water', 'Earth', 'Air', 'Light', 'Dark', 'Cosmic', 'Temporal', 'Mechanical'];
+  
+  petData.skills.forEach((skill, index) => {
+      if (!validTypes.includes(skill.type)) {
+          console.error(`[Validation] Invalid skill type: ${skill.type} in skill ${index}. Fixing to 'Physical'`);
+          skill.type = 'Physical';
+      }
+  });
+}
+
+validateRarityConsistency(petData) {
+  const expectedCounts = {
+      'Normal': { skills: 2, traits: 1 },
+      'Magic': { skills: 3, traits: [1, 2] },
+      'Rare': { skills: [3, 4], traits: [2, 3] },
+      'Unique': { skills: 4, traits: 3 },
+      'Legend': { skills: 4, traits: 4 }
+  };
+  
+  const expected = expectedCounts[petData.rarity];
+  if (!expected) return;
+  
+  // Check skills count
+  const expectedSkills = Array.isArray(expected.skills) ? expected.skills : [expected.skills];
+  if (!expectedSkills.includes(petData.skills.length)) {
+      console.warn(`[Validation] ${petData.rarity} should have ${expectedSkills.join(' or ')} skills, got ${petData.skills.length}`);
+  }
+  
+  // Check traits count
+  const expectedTraits = Array.isArray(expected.traits) ? expected.traits : [expected.traits];
+  if (!expectedTraits.includes(petData.traits.length)) {
+      console.warn(`[Validation] ${petData.rarity} should have ${expectedTraits.join(' or ')} traits, got ${petData.traits.length}`);
+  }
+}
+
+validateImageKeywords(petData) {
+  const keywords = petData.description_en_keywords;
+  if (!keywords || keywords.length < 50) {
+      console.warn(`[Validation] Image keywords too short for ${petData.species}: ${keywords?.length} chars`);
+  }
+  
+  // Ensure keywords contain essential elements for good image generation
+  const requiredElements = ['creature', 'color', 'magical', 'art'];
+  const hasRequiredElements = requiredElements.some(element => 
+      keywords.toLowerCase().includes(element)
+  );
+  
+  if (!hasRequiredElements) {
+      console.warn(`[Validation] Image keywords missing essential elements for ${petData.species}`);
   }
 }
   /**

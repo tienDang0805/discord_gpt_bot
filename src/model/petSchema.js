@@ -6,7 +6,11 @@ const skillSchema = new mongoose.Schema({
     name: { type: String, required: true },
     description: { type: String, default: 'Mô tả kỹ năng.' },
     cost: { type: Number, default: 0 },
-    type: { type: String, enum: ['Physical', 'Magic', 'Support'], default: 'Physical' },
+    type: { 
+        type: String, 
+        enum: ['Physical', 'Magic', 'Support', 'Fire', 'Water', 'Earth', 'Air', 'Light', 'Dark', 'Cosmic', 'Temporal', 'Mechanical'], 
+        default: 'Physical' 
+    },
     power: { type: Number, default: 10 }
 }, { _id: false });
 
@@ -16,7 +20,7 @@ const traitSchema = new mongoose.Schema({
 }, { _id: false });
 
 const petSchema = new mongoose.Schema({
-    ownerId: { type: String, required: true, index: true }, // KHÔNG unique để cho phép nhiều pets
+    ownerId: { type: String, required: true, index: true },
     name: { type: String, required: true },
     species: { type: String, required: true },
     description: { type: String, default: '' },
@@ -39,13 +43,14 @@ const petSchema = new mongoose.Schema({
     },
     evolutionStage: { type: Number, default: 1 },
     imageBasePrompt: { type: String, required: true },
+    imageData: { type: String },
     createdAt: { type: Date, default: Date.now },
 });
 
-// Schema cho việc theo dõi lần mở trứng cuối cùng
 const userEggCooldownSchema = new mongoose.Schema({
     userId: { type: String, required: true, unique: true },
     lastEggOpenTime: { type: Date, default: Date.now },
+    dailyCount: { type: Number, default: 0 },
 });
 
 const Pet = mongoose.model('Pet', petSchema);

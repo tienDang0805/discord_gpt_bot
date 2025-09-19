@@ -245,7 +245,7 @@ module.exports = [
               .setDescription('Bắt đầu hành trình với một quả trứng mới'))
       .addSubcommand(subcommand =>
           subcommand
-              .setName('status')
+              .setName('list')
               .setDescription('Xem thông tin chi tiết của thú cưng'))
       .addSubcommand(subcommand =>
           subcommand
