@@ -4,7 +4,7 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('
 const GptChatService = require('./gptChatService');
 const Pet = require('../model/petSchema');
 const ImageGenerationService = require('./imageGenerationService');
-
+const ADMIN_IDS = ['448507913879945216']; // Add this line
 // Khởi tạo các service một lần ở ngoài class để tái sử dụng
 // Đúng theo cách bạn đã làm trong interactionHandler.js
 
@@ -29,7 +29,7 @@ class PetService {
 
         try {
             const existingPet = await Pet.findOne({ ownerId: userId });
-            if (existingPet) {
+            if (existingPet && !ADMIN_IDS.includes(userId)) {
                 console.log(`[PetService] User ID: ${userId} đã có pet. Ngừng quy trình.`);
                 return interaction.editReply({ content: `❌ Bạn đã có một thú cưng tên là **${existingPet.name}** rồi!`, ephemeral: true });
             }
