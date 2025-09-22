@@ -173,7 +173,23 @@ const prompt = `
                             **14. Sơn Hải Kinh đặc hữu:**
                             * **Kỳ thú:** Bì Ngư, Cửu Đầu Điểu, Kinh Xà, Thao Thiết, Cùng Kỳ, Đào Ngột.
                             * **Thần thú:** Kỳ Lân, Bạch Trạch, Hỗn Độn.
-                        `;
+                          ## Đầu ra
+                            - Trả về JSON array gồm 3 objects.
+                            - Mỗi object:
+                            {
+                                "type": "Tên trứng (phải khớp đúng độ hiếm)",
+                                "description": "Mô tả chi tiết theo quy tắc trên"
+                            }
+
+                            ## Ngẫu nhiên
+                            - Luôn sinh ra 3 trứng khác nhau với độ hiếm ngẫu nhiên theo tỉ lệ:
+                            * Normal 50%
+                            * Magic 30%
+                            * Rare 15%
+                            * Unique 4%
+                            * Legend 1%
+                            - Không lặp lại tên hoặc mô tả từ bất kỳ kết quả trước đó.
+                            `;
             
             console.log(`[PetService] Đang gọi AI để tạo 3 loại trứng...`);
             const response = await this.gptService.generatePKResponse(prompt);
