@@ -727,7 +727,7 @@ async showSinglePetStatus(interaction, petId) {
             'Normal': '⚪',
             'Magic': '🔵', 
             'Rare': '🟡',
-            'Unique': '🟣',
+            'Unique': '🟠',
             'Legend': '🔴'
         };
         return emojiMap[rarity] || '⚪';
