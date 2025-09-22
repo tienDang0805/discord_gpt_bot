@@ -939,129 +939,94 @@ CHỈ TRẢ VỀ MỘT MẢNG JSON HỢP LỆ. KHÔNG BAO GỒM BẤT KỲ GIẢ
     return []; 
   }
 }
-// Thêm vào GptChatService.js
 
-// Enhanced generatePetFromEgg với description_en_keywords cực kỳ chi tiết
+async generatePetFromEgg(eggtype ) {
+  console.log("[generatePetFromEgg] Nhận thông tin trứng:", eggtype);
+  
+  const prompt = `Bạn là một Game Master trò chơi Huấn Luyện thú , một chuyên gia tạo ra sinh vật 
+Tạo sinh vật từ trứng: "${eggtype}" 
+Random độ hiếm: Normal(50%), Magic(30%), Rare(15%), Unique(4%), Legend(1%)
 
-// Enhanced generatePetFromEgg với description_en_keywords cực kỳ chi tiết
+### Prompt Tổng hợp: Các Chủng Tộc và Sinh Vật
 
-async generatePetFromEgg(eggType) {
-  console.log("eggType",eggType)
-  const prompt = `Bạn là một AI Sáng Tạo Sinh Vật, một nhà sinh vật học của các thế giới giả tưởng, có khả năng tạo ra một hệ sinh thái hoàn chỉnh từ những sinh vật nhỏ bé, phổ thông nhất cho đến những huyền thoại vĩ đại.
-Nhiệm vụ của bạn là tạo ra một **sinh vật giả tưởng** hoàn toàn độc đáo dựa trên nguồn cảm hứng: "${eggType.replace(/_/g, ' ')}".
+**1. Long tộc (Rồng):**
+* **Phương Tây:** Dragon, Wyvern, Drake, Wyrm.
+* **Phương Đông:** Thanh Long, Hắc Long, Hỏa Long, Ứng Long, Giao Long, Kỳ Lân Long.
 
-🔥 QUY TẮC VÀNG VỀ SÁNG TẠO ĐỘ HIẾM (CỰC KỲ QUAN TRỌNG):
-Không phải mọi sinh vật lấy cảm hứng từ thần thoại đều phải là 'Legend' hay 'Unique'. Bạn BẮT BUỘC phải tuân thủ tỷ lệ phần trăm độ hiếm.
-- **Đối với độ hiếm thấp (Normal, Magic):** Hãy sáng tạo ra các sinh vật **phổ biến, ít được biết đến, các loài phụ thuộc, hoặc phiên bản 'sơ khai', 'non nớt'** của các huyền thoại lớn.
-- **VÍ DỤ:** Từ nguồn cảm hứng "Phượng Hoàng", thay vì luôn tạo ra Phượng Hoàng (Legend), bạn có thể tạo ra:
-    - **"Chim Tro Tàn" (Normal):** Một loài chim nhỏ sống bằng tro bụi mà Phượng Hoàng để lại.
-    - **"Linh Tước Lửa" (Magic):** Một loài chim có khả năng tạo ra tia lửa nhỏ, được coi là họ hàng xa của Phượng Hoàng.
-    - **"Phượng Hoàng Thiếu Niên" (Rare):** Một con phượng hoàng trẻ chưa bộc lộ hết sức mạnh.
+**2. Điểu tộc (Chim thần):**
+* **Phương Tây:** Phoenix, Griffin, Thunderbird, Roc.
+* **Phương Đông:** Chu Tước, Cửu Thiên Huyền Nữ Điểu, Tinh Điểu, Bằng.
 
-🚨 **CHỈ DẪN CHỐT HẠ:** Nguồn cảm hứng "${eggType.replace(/_/g, ' ')}" chỉ để gợi ý về **chủ đề, nguyên tố, ngoại hình và bộ kỹ năng**. Nó **TUYỆT ĐỐI KHÔNG ĐƯỢC PHÉP** ảnh hưởng đến quyết định về độ hiếm. Độ hiếm phải được quyết định **HOÀN TOÀN NGẪU NHIÊN** theo đúng tỷ lệ phần trăm trong bảng dưới đây.
+**3. Thú tộc (Quái vật):**
+* **Phương Tây:** Wolf, Tiger, Lion, Fox, Bear.
+* **Phương Đông:** Bạch Hổ, Thanh Hồ, Cửu Vĩ Hồ, Sơn Quân Hùng.
 
-⚡ BƯỚC 1: CHỌN NGUỒN CẢM HỨNG (ngẫu nhiên cao):
+**4. Bò sát:**
+* **Phương Tây:** Snake, Lizard, Turtle, Crocodile.
+* **Phương Đông:** Huyền Vũ (rùa + rắn), Kim Xà, Hỏa Xà, Long Quy.
 
-🇨🇳 PHƯƠNG ĐÔNG:
-- SƠN HẢI KINH: Cửu vĩ hồ, Phượng Hoàng, Kỳ Lân, Bạch Hổ, Huyền Vũ, Thanh Long, Chu Tước, Taotie, Hundun
-- RỒNG PHƯƠNG ĐÔNG: Ứng Long, Long Vương, Khai Minh Thú
-- LINH THÚ VIỆT NAM: Rồng Lạc Long Quân, Phượng Âu Cơ, Linh Quy, Kỳ Lân Việt
-- NHẬT BẢN: Kitsune, Tengu, Kappa, Ryuu, Raiju, Inugami, Nekomata, Oni
-- HÀN QUỐC: Haetae, Bulgae, Inmyeonjo, Bonghwang
+**5. Côn trùng / Yêu trùng:**
+* **Phương Tây:** Butterfly, Beetle, Mantis, Spider.
+* **Phương Đông:** Kim Thiền, Linh Chuồn, Độc Trùng, Tằm Tổ Mẫu.
 
-🏰 PHƯƠNG TÂY:
-- HY LẠP: Griffin, Phoenix, Sphinx, Pegasus, Hippogryph, Chimera, Hydra, Basilisk
-- BẮC ÂU: Fenrir, Sleipnir, Jormungandr, Ratatoskr, Huginn & Muninn
-- CELTIC: Selkie, Kelpie, Banshee, Cu-sith, Each-uisge
-- MEDIEVAL: Wyvern, Basilisk, Cockatrice, Manticore
+**6. Thủy sinh:**
+* **Phương Tây:** Fish, Octopus, Jellyfish, Shark.
+* **Phương Đông:** Ngư Yêu, Kình Ngư, Thủy Quái, Côn Ngư (có thể hóa thành Bằng).
 
-🌌 NGUYÊN TỐ & VŨ TRỤ:
-- CƠ GIỚI: Steampunk automatons, Clockwork creatures, Crystal-tech beings, Runic golems
-- VŨ TRỤ: Nebula spirits, Meteor beasts, Black hole entities, Quasar beings, Pulsar creatures
-- THỜI GIAN: Chronos beasts, Temporal spirits, Time-warped entities
-- NGUYÊN TỐ: Plasma elementals, Shadow-flame beings, Ice-lightning spirits, Void-light entities
+**7. Thực vật:**
+* **Phương Tây:** Tree spirit, Flower fairy, Mushroom.
+* **Phương Đông:** Mộc Linh, Liễu Tinh, Đào Hoa Yêu, Thụ Yêu.
 
-⚡ BƯỚC 2: CHỌN ĐỘ HIẾM VÀ TÍNH TOÁN STATS (PHẢI TUÂN THỦ NGHIÊM NGẶT):
+**8. Khoáng chất:**
+* **Phương Tây:** Golem, Crystal being, Stone guardian.
+* **Phương Đông:** Thạch Quái, Ngọc Hồn, Kim Tinh, Sơn Thần.
 
-BẢNG ĐỘ HIẾM VÀ STATS:
-- Normal (40%): 
-* Total Stats: 250-350
-* HP: 40-60, MP: 20-35, ATK: 25-40, DEF: 25-40, INT: 20-35, SPD: 25-40
-* Traits: 1 trait
-* Skills: 2 skills
-- Magic (30%): 
-* Total Stats: 350-450
-* HP: 55-75, MP: 35-50, ATK: 35-55, DEF: 35-55, INT: 30-50, SPD: 35-55
-* Traits: 1-2 traits
-* Skills: 3 skills
-- Rare (20%): 
-* Total Stats: 450-600
-* HP: 70-100, MP: 50-75, ATK: 50-75, DEF: 50-75, INT: 45-70, SPD: 50-75
-* Traits: 2-3 traits
-* Skills: 3-4 skills
-- Unique (9%): 
-* Total Stats: 600-800
-* HP: 95-130, MP: 70-100, ATK: 70-100, DEF: 70-100, INT: 65-95, SPD: 70-100
-* Traits: 3 traits
-* Skills: 4 skills
-- Legend (1%): 
-* Total Stats: 800-1000
-* HP: 125-170, MP: 95-130, ATK: 95-130, DEF: 95-130, INT: 90-125, SPD: 95-130
-* Traits: 4 traits
-* Skills: 4 skills
+**9. Linh thể:**
+* **Phương Tây:** Ghost, Spirit, Wraith, Shade.
+* **Phương Đông:** Quỷ Hồn, Oán Linh, Du Hồn, Phệ Hồn Quái.
 
-⚡ BƯỚC 3: TYPES SKILLS HỢP LỆ (QUAN TRỌNG - CHỈ DÙNG CÁC TYPE SAU):
-['Physical', 'Magic', 'Support', 'Fire', 'Water', 'Earth', 'Air', 'Light', 'Dark', 'Cosmic', 'Temporal', 'Mechanical']
+**10. Nguyên tố:**
+* **Phương Tây:** Fire, Water, Earth, Air elemental.
+* **Phương Đông:** Ngũ Hành Linh (Kim, Mộc, Thủy, Hỏa, Thổ), Lôi Linh, Âm Dương Linh.
 
-⚡ BƯỚC 4: TẠO DESCRIPTION_EN_KEYWORDS CỰC KỲ CHI TIẾT
-Đây là phần QUAN TRỌNG NHẤT để AI tạo ảnh đẹp. Hãy mô tả cực kỳ chi tiết bằng tiếng Anh:
+**11. Cơ giới:**
+* **Phương Tây:** Automaton, Clockwork, Mecha.
+* **Phương Đông:** Khôi Lỗi, Cơ Tượng, Thần Binh Hóa Hình.
 
-FORMAT KEYWORDS: "creature type, physical features, colors, textures, magical auras, cultural elements, pose/action, background elements, art style"
+**12. Vũ trụ / Huyền ảo:**
+* **Phương Tây:** Star being, Cosmic entity, Nebula.
+* **Phương Đông:** Tinh Thần, Nguyệt Thần, Thái Dương Thần, Thiên Ma, Cửu Thiên Tinh Quái.
 
-VÍ DỤ KEYWORDS:
-"nine-tailed fox spirit, fluffy silver fur, glowing blue flames on tail tips, jade ornaments, flowing silk ribbons, traditional chinese patterns, sitting gracefully, cherry blossoms floating, ethereal mist, oriental art style, ink painting aesthetic"
+**13. Tiểu yêu / Tinh linh:**
+* **Phương Tây:** Fairy, Pixie, Sprite, Wisp.
+* **Phương Đông:** Hồ Yêu, Sơn Tinh, Thủy Tinh, Lục Yêu, Dạ Xoa.
 
-⚡ BƯỚC 5: JSON HOÀN CHỈNH (PHẢI CHÍNH XÁC):
+**14. Sơn Hải Kinh đặc hữu:**
+* **Kỳ thú:** Bì Ngư, Cửu Đầu Điểu, Kinh Xà, Thao Thiết, Cùng Kỳ, Đào Ngột.
+* **Thần thú:** Kỳ Lân, Bạch Trạch, Hỗn Độn.
 
+STATS theo rarity:
+- Normal: total 250-350, 2 skills, 1 trait
+- Magic: total 350-450, 3 skills, 1-2 traits
+- Rare: total 450-600, 3-4 skills, 2-3 traits  
+- Unique: total 600-800, 4 skills, 3 traits
+- Legend: total 800-1000, 4 skills, 4 traits
+
+SKILL TYPES: Physical, Magic, Support, Fire, Water, Earth, Air, Light, Dark, Cosmic, Temporal, Mechanical
+
+JSON output:
 {
-"rarity": "Độ hiếm đã chọn ngẫu nhiên theo tỷ lệ trên",
-"element": "Nguyên tố phù hợp (Hỏa, Thủy, Thổ, Khí, Ánh sáng, Bóng tối, Cơ giới, Vũ trụ, etc.)",
-"species": "Tên loài bằng Tiếng Việt, kết hợp nguồn cảm hứng", 
-"description_vi": "Mô tả hoành tráng, thơ mộng bằng Tiếng Việt, 2-3 câu",
-"description_en_keywords": "Từ khóa cực kỳ chi tiết bằng tiếng Anh để AI vẽ ảnh đẹp",
-"base_stats": { 
-  "hp": "<số phù hợp với rarity theo bảng trên>", 
-  "mp": "<số phù hợp với rarity theo bảng trên>", 
-  "atk": "<số phù hợp với rarity theo bảng trên>", 
-  "def": "<số phù hợp với rarity theo bảng trên>", 
-  "int": "<số phù hợp với rarity theo bảng trên>", 
-  "spd": "<số phù hợp với rarity theo bảng trên>" 
-},
-"skills": [
-  { 
-    "name": "Tên kỹ năng Tiếng Việt, phù hợp với nguồn gốc thần thoại", 
-    "description": "Mô tả kỹ năng Tiếng Việt, chi tiết và ấn tượng", 
-    "cost": "<MP cost hợp lý>", 
-    "type": "CHỈ CHỌN TỪ DANH SÁCH: Physical, Magic, Support, Fire, Water, Earth, Air, Light, Dark, Cosmic, Temporal, Mechanical", 
-    "power": "<sức mạnh phù hợp với rarity>" 
-  }
-],
-"traits": [
-  { 
-    "name": "Tên nội tại Tiếng Việt, thể hiện bản chất của sinh vật", 
-    "description": "Mô tả nội tại Tiếng Việt, mang tính chất thần thoại" 
-  }
-]
+"rarity": "random theo tỷ lệ",
+"element": "nguyên tố phù hợp",
+"species": "tên sinh vật tiếng Việt",
+"description_vi": "mô tả 2-3 câu",
+"description_en_keywords": "creature type (dragon/wolf/bird/etc), body features, colors, textures, pose, fantasy art style",
+"base_stats": {"hp":số,"mp":số,"atk":số,"def":số,"int":số,"spd":số},
+"skills": [{"name":"tên","description":"mô tả","cost":số,"type":"loại","power":số}],
+"traits": [{"name":"tên","description":"mô tả"}]
 }
 
-🎯 LƯU Ý QUAN TRỌNG:
-- DESCRIPTION_EN_KEYWORDS phải CỰC KỲ CHI TIẾT để AI vẽ ảnh đẹp
-- Skills type CHỈ được chọn từ danh sách hợp lệ ở trên
-- Stats phải chính xác theo từng rarity level
-- Số lượng skills và traits phải đúng theo rarity
-- Tạo sinh vật hoàn toàn MỚI, không copy từ ví dụ
-- Tính ngẫu nhiên cao là ưu tiên hàng đầu
-- Skills phải có power tương ứng với rarity (Normal: 15-30, Magic: 25-45, Rare: 40-65, Unique: 60-85, Legend: 80-120)
+Bắt buộc: description_en_keywords phải rõ ràng về LOẠI SINH VẬT (dragon, wolf, bird, etc) để AI vẽ đúng hình dạng, Sinh vật phải cute dễ nhìn không quá hầm hố phù hợp với thị hiếu của nhà huấn luyện thú.
 `;
 
   try {
@@ -1076,31 +1041,32 @@ VÍ DỤ KEYWORDS:
       const jsonString = response.text();
       const petData = JSON.parse(jsonString);
       
-      this.validatePetStats(petData);
-      this.validateSkillTypes(petData);
-      this.validateRarityConsistency(petData);
-      this.validateImageKeywords(petData);
+      // Chỉ validate skill types (quan trọng nhất)
+      const validTypes = ['Physical', 'Magic', 'Support', 'Fire', 'Water', 'Earth', 'Air', 'Light', 'Dark', 'Cosmic', 'Temporal', 'Mechanical'];
+      petData.skills.forEach((skill, index) => {
+          if (!validTypes.includes(skill.type)) {
+              console.warn(`[Validation] Fixed skill type: ${skill.type} -> Physical`);
+              skill.type = 'Physical';
+          }
+      });
       
+      console.log("[generatePetFromEgg] Tạo pet thành công:", petData.species, petData.rarity);
       return petData;
 
   } catch (error) {
-      await this.logError(error, { 
-          type: 'generatePetFromEgg', 
-          eggType
-      });
-      console.error('[generatePetFromEgg] Critical error:', error);
-      throw new Error("AI đã thất bại trong việc tạo ra sinh mệnh mới.");
+      console.error('[generatePetFromEgg] Error:', error);
+      throw new Error("Không thể tạo sinh vật từ trứng này.");
   }
 }
 
-// Enhanced validation methods
+// Validation methods giữ nguyên từ code cũ
 validatePetStats(petData) {
   const rarityRanges = {
-      'Normal': { total: { min: 250, max: 350 }, individual: { min: 20, max: 60 } },
-      'Magic': { total: { min: 350, max: 450 }, individual: { min: 30, max: 75 } },
-      'Rare': { total: { min: 450, max: 600 }, individual: { min: 45, max: 100 } },
-      'Unique': { total: { min: 600, max: 800 }, individual: { min: 65, max: 130 } },
-      'Legend': { total: { min: 800, max: 1000 }, individual: { min: 90, max: 170 } }
+      'Normal': { total: { min: 250, max: 350 } },
+      'Magic': { total: { min: 350, max: 450 } },
+      'Rare': { total: { min: 450, max: 600 } },
+      'Unique': { total: { min: 600, max: 800 } },
+      'Legend': { total: { min: 800, max: 1000 } }
   };
   
   const range = rarityRanges[petData.rarity];
@@ -1112,18 +1078,8 @@ validatePetStats(petData) {
   const stats = petData.base_stats;
   const totalStats = stats.hp + stats.mp + stats.atk + stats.def + stats.int + stats.spd;
   
-  // Validate total stats
   if (totalStats < range.total.min * 0.8) {
-      console.warn(`[Validation] Pet stats too low for ${petData.rarity}: ${totalStats} < ${range.total.min}`);
-      // Auto-adjust if significantly below expected
-      const boost = Math.ceil((range.total.min - totalStats) / 6);
-      Object.keys(stats).forEach(stat => {
-          stats[stat] = Math.max(stats[stat] + boost, range.individual.min);
-      });
-  }
-  
-  if (totalStats > range.total.max * 1.2) {
-      console.warn(`[Validation] Pet stats too high for ${petData.rarity}: ${totalStats} > ${range.total.max}`);
+      console.warn(`[Validation] Pet stats too low for ${petData.rarity}: ${totalStats}`);
   }
 }
 
@@ -1132,7 +1088,7 @@ validateSkillTypes(petData) {
   
   petData.skills.forEach((skill, index) => {
       if (!validTypes.includes(skill.type)) {
-          console.error(`[Validation] Invalid skill type: ${skill.type} in skill ${index}. Fixing to 'Physical'`);
+          console.error(`[Validation] Invalid skill type: ${skill.type}. Fixing to 'Physical'`);
           skill.type = 'Physical';
       }
   });
@@ -1150,33 +1106,9 @@ validateRarityConsistency(petData) {
   const expected = expectedCounts[petData.rarity];
   if (!expected) return;
   
-  // Check skills count
   const expectedSkills = Array.isArray(expected.skills) ? expected.skills : [expected.skills];
   if (!expectedSkills.includes(petData.skills.length)) {
       console.warn(`[Validation] ${petData.rarity} should have ${expectedSkills.join(' or ')} skills, got ${petData.skills.length}`);
-  }
-  
-  // Check traits count
-  const expectedTraits = Array.isArray(expected.traits) ? expected.traits : [expected.traits];
-  if (!expectedTraits.includes(petData.traits.length)) {
-      console.warn(`[Validation] ${petData.rarity} should have ${expectedTraits.join(' or ')} traits, got ${petData.traits.length}`);
-  }
-}
-
-validateImageKeywords(petData) {
-  const keywords = petData.description_en_keywords;
-  if (!keywords || keywords.length < 50) {
-      console.warn(`[Validation] Image keywords too short for ${petData.species}: ${keywords?.length} chars`);
-  }
-  
-  // Ensure keywords contain essential elements for good image generation
-  const requiredElements = ['creature', 'color', 'magical', 'art'];
-  const hasRequiredElements = requiredElements.some(element => 
-      keywords.toLowerCase().includes(element)
-  );
-  
-  if (!hasRequiredElements) {
-      console.warn(`[Validation] Image keywords missing essential elements for ${petData.species}`);
   }
 }
   /**
