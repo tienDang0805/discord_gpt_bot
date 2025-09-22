@@ -961,12 +961,12 @@ Nhận một loại trứng đầu vào (ví dụ: "Trứng Gió Lốc", "Trứn
 3.  **Chọn Chủng Tộc & Nguyên Tố:** Dựa trên kết quả từ Bước 1 & 2, chọn một **chủng tộc (species)** và **nguyên tố (element)** phù hợp nhất từ **CƠ SỞ DỮ LIỆU SINH VẬT** bên dưới.
 4.  **Phân Bổ Chỉ Số (Base Stats):** Dựa trên độ hiếm đã chọn, lấy tổng điểm tương ứng từ **HỆ THỐNG CHỈ SỐ**. Phân bổ tổng điểm đó vào các chỉ số (HP, MP, ATK, DEF, INT, SPD) một cách hợp lý, phản ánh đúng bản chất của sinh vật. (Ví dụ: Golem có DEF cao, SPD thấp; Tinh Linh Gió có SPD cao, DEF thấp).
 5.  **Thiết Kế Kỹ Năng & Nội Tại (Skills & Traits):** Sáng tạo các kỹ năng và nội tại có tên gọi, mô tả, và hiệu ứng **liên quan trực tiếp** đến chủng tộc, nguyên tố và vai trò của sinh vật. Số lượng kỹ năng/nội tại phải tuân theo độ hiếm.
-6.  **Viết Mô Tả Sáng Tạo:**
-    * \`description_vi\`: Viết một đoạn mô tả (2-3 câu) sống động, nêu bật ngoại hình và tính cách của sinh vật. **BẮT BUỘC** phải nhấn mạnh các đặc điểm **đáng yêu, dễ thương** (ví dụ: mắt to tròn, thân hình mũm mĩm, biểu cảm tinh nghịch, màu sắc tươi sáng).
-    * \`description_en_keywords\`: Cung cấp một chuỗi từ khóa tiếng Anh chi tiết cho AI vẽ hình. **BẮT BUỘC** phải có:
-        * **Loại sinh vật cốt lõi:** \`(cute baby [creature type], e.g., dragon, golem, fox)\`.
-        * **Đặc điểm chính:** \`(rounded body, large expressive eyes, chibi style)\`.
-        * **Các chi tiết khác:** màu sắc, vật liệu, tư thế, phong cách nghệ thuật \`(fantasy art, vibrant colors, playful pose)\`.
+**6. Viết Mô Tả Sáng Tạo (Phiên bản linh hoạt):**
+* description_vi: Viết một đoạn mô tả (2-3 câu) sống động, nêu bật ngoại hình và tính cách của sinh vật. Mô tả sinh vật ở dạng **Ấu Thú** (giai đoạn đầu đời). Ngoại hình phải **hấp dẫn và phù hợp với thị hiếu** của một nhà huấn luyện, nhưng **phong cách phải phản ánh đúng bản chất của quả trứng**. Ví dụ, một sinh vật từ 'Trứng Bóng Đêm' có thể dễ thương theo kiểu bí ẩn, tinh nghịch, chứ không phải kiểu rực rỡ, tươi sáng của 'Trứng Ngàn Hoa'.
+* description_en_keywords: Cung cấp một chuỗi từ khóa tiếng Anh chi tiết cho AI vẽ hình. Các từ khóa phải thể hiện được tinh thần của sinh vật một cách độc đáo. **BẮT BUỘC** phải có:
+    * **Loại sinh vật cốt lõi ở dạng non nớt:** Sử dụng các tiền tố như (baby [creature type], young [creature type], fledgling [creature type]).
+    * **Đặc điểm và Phong cách đa dạng:** **Linh hoạt và sáng tạo**, không bị ép buộc vào một khuôn mẫu. Hãy sử dụng các từ khóa mô tả phong cách (mystical, ethereal, clockwork, crystalline, shadowy, nature-infused) và cảm xúc (mischievous, serene, proud, curious) để tạo sự khác biệt, miễn là nó hợp lý với chủ đề của trứng.
+    * **Các chi tiết khác:** Tùy chỉnh màu sắc, vật liệu, tư thế, phong cách nghệ thuật để phù hợp nhất với mô tả.
 7.  **Xuất Ra Định Dạng JSON:** Tổng hợp tất cả thông tin trên vào cấu trúc JSON được yêu cầu.
 
 ---

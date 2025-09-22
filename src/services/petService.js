@@ -115,7 +115,7 @@ const prompt = `
 
                         ## Quy tắc quan trọng về ĐỘ HIẾM & TÊN TRỨNG
                         - Mỗi quả trứng phải có tên phù hợp tuyệt đối với độ hiếm , : Các Chủng Tộc và Sinh Vật
-                        - độ hiếm : Normal (40%) , magic(30%) , rare (20%) , unique(9%) , legend  (1%)=> tên trứng phải phù hợp với độ hiếm , Mày tự ngẫu nhiên 
+                        - độ hiếm : Normal (40%) , magic(30%) , rare (20%) , unique(9%) , legend  (1%)=> tên trứng phải phù hợp với độ hiếm , Bạn tự ngẫu nhiên 
                         ### Prompt Tổng hợp: Các Chủng Tộc và Sinh Vật
 
                             **1. Long tộc (Rồng):**
@@ -177,12 +177,12 @@ const prompt = `
                             - Trả về JSON array gồm 3 objects.
                             - Mỗi object:
                             {
-                                "type": "Tên trứng (phải khớp đúng độ hiếm)",
+                                "type": "Tên trứng ",
                                 "description": "Mô tả chi tiết theo quy tắc trên"
                             }
 
                             ## Ngẫu nhiên
-                            - Luôn sinh ra 3 trứng khác nhau với độ hiếm ngẫu nhiên theo tỉ lệ:
+                            - Trứng luôn phải được random theo tỉ lệ rairity:
                             * Normal 50%
                             * Magic 30%
                             * Rare 15%
@@ -287,8 +287,8 @@ async hatchEgg(interaction, eggType) {
             rarity: petData.rarity,
             element: petData.element,
             stats: finalStats,
-            skills: petData.skills, // ✅ Sử dụng mảng skills từ AI
-            traits: petData.traits, // ✅ Sử dụng mảng traits từ AI
+            skills: petData.skills, 
+            traits: petData.traits, 
             imageBasePrompt: imagePrompt,
             imageData: imageBase64,
             expToNextLevel: 100
@@ -301,7 +301,7 @@ async hatchEgg(interaction, eggType) {
         // Cập nhật lượt mở trứng
         await this.updateEggCooldown(userId);
 
-        const rarityColors = { Normal: 0xAAAAAA, Magic: 0x00BFFF, Rare: 0xFFD700, Unique: 0x9400D3, Legend: 0xFF4500 };
+        const rarityColors = { Normal: 0xAAAAAA, Magic: 0x00BFFF, Rare: 0xFFD700, Unique: 0xFF8C00, Legend: 0xFF4500 };
         const embed = new EmbedBuilder()
             .setTitle(`🎉 CHÚC MỪNG! THÚ CƯNG CỦA BạN ĐÃ NỞ! 🎉`)
             .setDescription(`Từ trong quả trứng **${eggType.replace(/_/g, ' ')}**, một **${petData.species}** đã ra đời!`)
@@ -314,7 +314,6 @@ async hatchEgg(interaction, eggType) {
             )
             .setImage('attachment://pet-image.png');
 
-        // ✅ Hiển thị tất cả skills (thay vì chỉ skills[0])
         if (newPet.skills && newPet.skills.length > 0) {
             newPet.skills.forEach((skill, index) => {
                 embed.addFields({
@@ -324,7 +323,6 @@ async hatchEgg(interaction, eggType) {
             });
         }
 
-        // ✅ Hiển thị tất cả traits (thay vì chỉ traits[0])
         if (newPet.traits && newPet.traits.length > 0) {
             newPet.traits.forEach((trait, index) => {
                 embed.addFields({
