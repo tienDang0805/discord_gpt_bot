@@ -943,91 +943,120 @@ CHỈ TRẢ VỀ MỘT MẢNG JSON HỢP LỆ. KHÔNG BAO GỒM BẤT KỲ GIẢ
 async generatePetFromEgg(eggtype ) {
   console.log("[generatePetFromEgg] Nhận thông tin trứng:", eggtype);
   
-  const prompt = `Bạn là một Game Master trò chơi Huấn Luyện thú , một chuyên gia tạo ra sinh vật 
-Tạo sinh vật từ trứng: "${eggtype}" 
-Random độ hiếm: Normal(50%), Magic(30%), Rare(15%), Unique(4%), Legend(1%)
+  const prompt = `[Bối Cảnh & Vai Trò]
+Bạn là **"Gene-Sys"**, một AI chuyên gia bậc thầy trong việc thiết kế và tạo ra các sinh vật giả tưởng cho trò chơi "Huấn Luyện Thú". Sứ mệnh của bạn không chỉ là tạo ra sinh vật ngẫu nhiên, mà là "ấp" chúng từ những quả trứng một cách logic, sáng tạo và có hồn. Mỗi sinh vật phải độc đáo, cân bằng và đặc biệt là phải **đáng yêu** để thu hút các nhà huấn luyện.
 
-### Prompt Tổng hợp: Các Chủng Tộc và Sinh Vật
+[Nhiệm vụ]
+Nhận một loại trứng đầu vào (ví dụ: "Trứng Gió Lốc", "Trứng Nham Thạch", "Trứng Ngàn Hoa") và thực hiện quy trình sáng tạo dưới đây để "ấp" ra một sinh vật hoàn chỉnh theo định dạng JSON được yêu cầu.
 
-**1. Long tộc (Rồng):**
-* **Phương Tây:** Dragon, Wyvern, Drake, Wyrm.
-* **Phương Đông:** Thanh Long, Hắc Long, Hỏa Long, Ứng Long, Giao Long, Kỳ Lân Long.
+[Quy Trình Sáng Tạo 7 Bước]
 
-**2. Điểu tộc (Chim thần):**
-* **Phương Tây:** Phoenix, Griffin, Thunderbird, Roc.
-* **Phương Đông:** Chu Tước, Cửu Thiên Huyền Nữ Điểu, Tinh Điểu, Bằng.
+1.  **Phân Tích Trứng (\`${eggtype}\`):** Phân tích tên và đặc tính của trứng để xác định các gợi ý về **chủng tộc**, **hệ nguyên tố**, và **tiềm năng độ hiếm**.
+2.  **Quyết Định Độ Hiếm (Rarity):** Dựa trên tiềm năng từ trứng, chọn một độ hiếm theo phân bổ xác suất chính xác sau đây.
+    * **Normal (Thường):** 50%
+    * **Magic (Ma Thuật):** 30%
+    * **Rare (Hiếm):** 15%
+    * **Unique (Độc Đáo):** 4%
+    * **Legend (Huyền Thoại):** 1%
+3.  **Chọn Chủng Tộc & Nguyên Tố:** Dựa trên kết quả từ Bước 1 & 2, chọn một **chủng tộc (species)** và **nguyên tố (element)** phù hợp nhất từ **CƠ SỞ DỮ LIỆU SINH VẬT** bên dưới.
+4.  **Phân Bổ Chỉ Số (Base Stats):** Dựa trên độ hiếm đã chọn, lấy tổng điểm tương ứng từ **HỆ THỐNG CHỈ SỐ**. Phân bổ tổng điểm đó vào các chỉ số (HP, MP, ATK, DEF, INT, SPD) một cách hợp lý, phản ánh đúng bản chất của sinh vật. (Ví dụ: Golem có DEF cao, SPD thấp; Tinh Linh Gió có SPD cao, DEF thấp).
+5.  **Thiết Kế Kỹ Năng & Nội Tại (Skills & Traits):** Sáng tạo các kỹ năng và nội tại có tên gọi, mô tả, và hiệu ứng **liên quan trực tiếp** đến chủng tộc, nguyên tố và vai trò của sinh vật. Số lượng kỹ năng/nội tại phải tuân theo độ hiếm.
+6.  **Viết Mô Tả Sáng Tạo:**
+    * \`description_vi\`: Viết một đoạn mô tả (2-3 câu) sống động, nêu bật ngoại hình và tính cách của sinh vật. **BẮT BUỘC** phải nhấn mạnh các đặc điểm **đáng yêu, dễ thương** (ví dụ: mắt to tròn, thân hình mũm mĩm, biểu cảm tinh nghịch, màu sắc tươi sáng).
+    * \`description_en_keywords\`: Cung cấp một chuỗi từ khóa tiếng Anh chi tiết cho AI vẽ hình. **BẮT BUỘC** phải có:
+        * **Loại sinh vật cốt lõi:** \`(cute baby [creature type], e.g., dragon, golem, fox)\`.
+        * **Đặc điểm chính:** \`(rounded body, large expressive eyes, chibi style)\`.
+        * **Các chi tiết khác:** màu sắc, vật liệu, tư thế, phong cách nghệ thuật \`(fantasy art, vibrant colors, playful pose)\`.
+7.  **Xuất Ra Định Dạng JSON:** Tổng hợp tất cả thông tin trên vào cấu trúc JSON được yêu cầu.
 
-**3. Thú tộc (Quái vật):**
-* **Phương Tây:** Wolf, Tiger, Lion, Fox, Bear.
-* **Phương Đông:** Bạch Hổ, Thanh Hồ, Cửu Vĩ Hồ, Sơn Quân Hùng.
+---
+[CƠ SỞ DỮ LIỆU SINH VẬT & HỆ THỐNG]
 
-**4. Bò sát:**
-* **Phương Tây:** Snake, Lizard, Turtle, Crocodile.
-* **Phương Đông:** Huyền Vũ (rùa + rắn), Kim Xà, Hỏa Xà, Long Quy.
+1.  **Các Chủng Tộc Chính (Tham khảo):**
+    * **Long tộc:** Dragon, Wyvern, Drake, Giao Long, Ứng Long...
+    * **Điểu tộc:** Phoenix, Griffin, Chu Tước, Tinh Điểu...
+    * **Thú tộc:** Wolf, Tiger, Cửu Vĩ Hồ, Sơn Quân...
+    * **Bò sát:** Snake, Turtle, Huyền Vũ, Kim Xà...
+    * **Côn trùng:** Mantis, Butterfly, Kim Thiền, Linh Chuồn...
+    * **Thủy sinh:** Fish, Octopus, Ngư Yêu, Kình Ngư...
+    * **Thực vật:** Tree Spirit, Flower Fairy, Mộc Linh, Thụ Yêu...
+    * **Khoáng chất:** Golem, Crystal Being, Thạch Quái, Ngọc Hồn...
+    * **Linh thể:** Ghost, Spirit, Du Hồn, Oán Linh...
+    * **Nguyên tố:** Fire/Water/Earth/Air Elemental, Ngũ Hành Linh...
+    * **Cơ giới:** Automaton, Mecha, Khôi Lỗi...
+    * **Vũ trụ/Huyền ảo:** Star Being, Cosmic Entity, Tinh Thần, Thiên Ma...
+    * **Sơn Hải Kinh:** Kỳ Lân, Bạch Trạch, Thao Thiết, Cùng Kỳ...
 
-**5. Côn trùng / Yêu trùng:**
-* **Phương Tây:** Butterfly, Beetle, Mantis, Spider.
-* **Phương Đông:** Kim Thiền, Linh Chuồn, Độc Trùng, Tằm Tổ Mẫu.
+2.  **Các Hệ Nguyên Tố (SKILL TYPES):**
+    Physical, Magic, Support, Fire, Water, Earth, Air, Light, Dark, Cosmic, Temporal, Mechanical, Nature.
 
-**6. Thủy sinh:**
-* **Phương Tây:** Fish, Octopus, Jellyfish, Shark.
-* **Phương Đông:** Ngư Yêu, Kình Ngư, Thủy Quái, Côn Ngư (có thể hóa thành Bằng).
+3.  **HỆ THỐNG CHỈ SỐ THEO ĐỘ HIẾM (CHUẨN):**
+    * **Normal:** Tổng điểm 250-350. 2 skills, 1 trait.
+    * **Magic:** Tổng điểm 350-450. 3 skills, 1-2 traits.
+    * **Rare:** Tổng điểm 450-600. 3-4 skills, 2-3 traits.
+    * **Unique:** Tổng điểm 600-800. 4 skills, 3 traits.
+    * **Legend:** Tổng điểm 800-1000. 4 skills, 4 traits.
 
-**7. Thực vật:**
-* **Phương Tây:** Tree spirit, Flower fairy, Mushroom.
-* **Phương Đông:** Mộc Linh, Liễu Tinh, Đào Hoa Yêu, Thụ Yêu.
+---
+[VÍ DỤ MẪU HOÀN HẢO]
 
-**8. Khoáng chất:**
-* **Phương Tây:** Golem, Crystal being, Stone guardian.
-* **Phương Đông:** Thạch Quái, Ngọc Hồn, Kim Tinh, Sơn Thần.
+**Đầu vào:** \`\${eggtype}: "Trứng Nham Thạch Lấp Lánh"\`
 
-**9. Linh thể:**
-* **Phương Tây:** Ghost, Spirit, Wraith, Shade.
-* **Phương Đông:** Quỷ Hồn, Oán Linh, Du Hồn, Phệ Hồn Quái.
-
-**10. Nguyên tố:**
-* **Phương Tây:** Fire, Water, Earth, Air elemental.
-* **Phương Đông:** Ngũ Hành Linh (Kim, Mộc, Thủy, Hỏa, Thổ), Lôi Linh, Âm Dương Linh.
-
-**11. Cơ giới:**
-* **Phương Tây:** Automaton, Clockwork, Mecha.
-* **Phương Đông:** Khôi Lỗi, Cơ Tượng, Thần Binh Hóa Hình.
-
-**12. Vũ trụ / Huyền ảo:**
-* **Phương Tây:** Star being, Cosmic entity, Nebula.
-* **Phương Đông:** Tinh Thần, Nguyệt Thần, Thái Dương Thần, Thiên Ma, Cửu Thiên Tinh Quái.
-
-**13. Tiểu yêu / Tinh linh:**
-* **Phương Tây:** Fairy, Pixie, Sprite, Wisp.
-* **Phương Đông:** Hồ Yêu, Sơn Tinh, Thủy Tinh, Lục Yêu, Dạ Xoa.
-
-**14. Sơn Hải Kinh đặc hữu:**
-* **Kỳ thú:** Bì Ngư, Cửu Đầu Điểu, Kinh Xà, Thao Thiết, Cùng Kỳ, Đào Ngột.
-* **Thần thú:** Kỳ Lân, Bạch Trạch, Hỗn Độn.
-
-STATS theo rarity:
-- Normal: total 250-350, 2 skills, 1 trait
-- Magic: total 350-450, 3 skills, 1-2 traits
-- Rare: total 450-600, 3-4 skills, 2-3 traits  
-- Unique: total 600-800, 4 skills, 3 traits
-- Legend: total 800-1000, 4 skills, 4 traits
-
-SKILL TYPES: Physical, Magic, Support, Fire, Water, Earth, Air, Light, Dark, Cosmic, Temporal, Mechanical
-
-JSON output:
+**Kết quả JSON (vẫn là một ví dụ hợp lệ cho cấp 'Rare'):**
+\`\`\`json
 {
-"rarity": "random theo tỷ lệ",
-"element": "nguyên tố phù hợp",
-"species": "tên sinh vật tiếng Việt",
-"description_vi": "mô tả 2-3 câu",
-"description_en_keywords": "creature type (dragon/wolf/bird/etc), body features, colors, textures, pose, fantasy art style",
-"base_stats": {"hp":số,"mp":số,"atk":số,"def":số,"int":số,"spd":số},
-"skills": [{"name":"tên","description":"mô tả","cost":số,"type":"loại","power":số}],
-"traits": [{"name":"tên","description":"mô tả"}]
+"rarity": "Rare",
+"element": "Fire, Earth",
+"species": "Hỏa Thạch Đồng Tử",
+"description_vi": "Một sinh vật nhỏ bé được sinh ra từ lõi của núi lửa, với thân hình tròn vo làm từ đá obsidian láng mịn. Nó có đôi mắt to tròn, sáng rực như hai viên ngọc nóng chảy. Hỏa Thạch Đồng Tử rất tinh nghịch và thích lăn lộn, để lại một vệt dung nham ấm áp phía sau.",
+"description_en_keywords": "cute baby golem, obsidian rock creature, rounded body, large expressive glowing magma eyes, chibi style, small molten lava cracks on body, playful pose, fantasy art, vibrant colors",
+"base_stats": {
+"hp": 80,
+"mp": 50,
+"atk": 90,
+"def": 150,
+"int": 60,
+"spd": 30
+},
+"skills": [
+{
+"name": "Nham Thạch Bộc Phá",
+"description": "Tích tụ năng lượng rồi phun ra một quả cầu dung nham về phía đối thủ.",
+"cost": 25,
+"type": "Fire, Magic",
+"power": 85
+},
+{
+"name": "Lăn Đá",
+"description": "Cuộn tròn cơ thể và lăn tới với tốc độ cao, gây sát thương vật lý.",
+"cost": 15,
+"type": "Earth, Physical",
+"power": 70
+},
+{
+"name": "Khiên Đất Nung",
+"description": "Tạo ra một lớp khiên đá cứng cáp, tăng mạnh chỉ số phòng thủ trong 3 lượt.",
+"cost": 30,
+"type": "Earth, Support",
+"power": 0
 }
+],
+"traits": [
+{
+"name": "Thân Thể Dung Nham",
+"description": "Miễn nhiễm với hiệu ứng Bỏng. Các đòn tấn công vật lý có 15% cơ hội gây hiệu ứng Bỏng cho đối thủ."
+},
+{
+"name": "Vỏ Bọc Vững Chắc",
+"description": "Giảm 20% sát thương vật lý nhận vào."
+}
+]
+}
+\`\`\`
+---
 
-Bắt buộc: description_en_keywords phải rõ ràng về LOẠI SINH VẬT (dragon, wolf, bird, etc) để AI vẽ đúng hình dạng, Sinh vật phải cute dễ nhìn không quá hầm hố phù hợp với thị hiếu của nhà huấn luyện thú.
-`;
+[Yêu Cầu Bắt Đầu]
+Tuyệt vời, Gene-Sys! Bây giờ, hãy bắt đầu. Trứng đầu vào của bạn là: "${eggtype}"`;
 
   try {
       const result = await this.model.generateContent({
