@@ -111,47 +111,69 @@ class PetService {
             // Prompt cải tiến để tạo trứng đa dạng hơn
             // Thay thế prompt trong beginHatchingProcess method
 const prompt = `
-   Bạn là Người Sáng Tạo Trứng, bậc thầy tạo ra trứng thần bí từ mọi nền văn hóa và chiều không gian.
+   Bạn là Người Sáng Tạo Trứng, bậc thầy tạo ra trứng từ mọi nền văn hóa , Chủng loại.
 
-## Quy tắc quan trọng về ĐỘ HIẾM & TÊN TRỨNG
-- Mỗi quả trứng phải có tên phù hợp tuyệt đối với độ hiếm:
-  * Normal (50%): tên đơn giản, gần gũi, tự nhiên, KHÔNG được huyền bí hay phô trương.
-    - Ví dụ mẫu phong cách: Trứng Rêu Non, Trứng Cá Chép, Trứng Sỏi Trắng.
-  * Magic (30%): tên có chút huyền ảo, nhẹ nhàng, không quá khoa trương.
-    - Ví dụ mẫu phong cách: Trứng Ánh Trăng, Trứng Gió Thì Thầm.
-  * Rare (15%): tên độc đáo, kết hợp bất thường, tạo sự lạ lẫm nhưng không vượt ngưỡng siêu nhiên.
-  * Unique (4%): tên kỳ dị, siêu nhiên, vượt khỏi lẽ thường.
-  * Legend (1%): tên hùng vĩ, cổ xưa hoặc mang tầm vũ trụ tối thượng.
+                        ## Quy tắc quan trọng về ĐỘ HIẾM & TÊN TRỨNG
+                        - Mỗi quả trứng phải có tên phù hợp tuyệt đối với độ hiếm , : Các Chủng Tộc và Sinh Vật
+                        - độ hiếm : Normal (40%) , magic(30%) , rare (20%) , unique(9%) , legend  (1%)=> tên trứng phải phù hợp với độ hiếm , Mày tự ngẫu nhiên 
+                        ### Prompt Tổng hợp: Các Chủng Tộc và Sinh Vật
 
-⚠️ BẮT BUỘC: Không được dùng sai phong cách. Ví dụ: Normal không được dùng từ vũ trụ hay siêu nhiên.
+                            **1. Long tộc (Rồng):**
+                            * **Phương Tây:** Dragon, Wyvern, Drake, Wyrm.
+                            * **Phương Đông:** Thanh Long, Hắc Long, Hỏa Long, Ứng Long, Giao Long, Kỳ Lân Long.
 
-## Nguồn cảm hứng
-- Normal/Magic: dùng thiên nhiên, động vật, hiện tượng thường ngày pha chút kỳ ảo.
-- Rare/Unique/Legend: có thể mở rộng sang thần thoại Đông - Tây, vũ trụ, cơ giới, chiều không gian.
+                            **2. Điểu tộc (Chim thần):**
+                            * **Phương Tây:** Phoenix, Griffin, Thunderbird, Roc.
+                            * **Phương Đông:** Chu Tước, Cửu Thiên Huyền Nữ Điểu, Tinh Điểu, Bằng.
 
-## Mô tả
-- Mỗi trứng phải mô tả bằng ít nhất 3 giác quan (mắt, tai, mũi, da, lưỡi).
-- Ngôn ngữ phải thơ mộng, bí ẩn, không khô cứng.
-- Trộn yếu tố văn hóa + khoa học viễn tưởng.
-- Mỗi quả trứng mô tả hoàn toàn khác phong cách, không lặp lại.
+                            **3. Thú tộc (Quái vật):**
+                            * **Phương Tây:** Wolf, Tiger, Lion, Fox, Bear.
+                            * **Phương Đông:** Bạch Hổ, Thanh Hồ, Cửu Vĩ Hồ, Sơn Quân Hùng.
 
-## Đầu ra
-- Trả về JSON array gồm 3 objects.
-- Mỗi object:
-  {
-    "type": "Tên trứng (phải khớp đúng độ hiếm)",
-    "description": "Mô tả chi tiết theo quy tắc trên"
-  }
+                            **4. Bò sát:**
+                            * **Phương Tây:** Snake, Lizard, Turtle, Crocodile.
+                            * **Phương Đông:** Huyền Vũ (rùa + rắn), Kim Xà, Hỏa Xà, Long Quy.
 
-## Ngẫu nhiên
-- Luôn sinh ra 3 trứng khác nhau với độ hiếm ngẫu nhiên theo tỉ lệ:
-  * Normal 50%
-  * Magic 30%
-  * Rare 15%
-  * Unique 4%
-  * Legend 1%
-- Không lặp lại tên hoặc mô tả từ bất kỳ kết quả trước đó.
-`;
+                            **5. Côn trùng / Yêu trùng:**
+                            * **Phương Tây:** Butterfly, Beetle, Mantis, Spider.
+                            * **Phương Đông:** Kim Thiền, Linh Chuồn, Độc Trùng, Tằm Tổ Mẫu.
+
+                            **6. Thủy sinh:**
+                            * **Phương Tây:** Fish, Octopus, Jellyfish, Shark.
+                            * **Phương Đông:** Ngư Yêu, Kình Ngư, Thủy Quái, Côn Ngư (có thể hóa thành Bằng).
+
+                            **7. Thực vật:**
+                            * **Phương Tây:** Tree spirit, Flower fairy, Mushroom.
+                            * **Phương Đông:** Mộc Linh, Liễu Tinh, Đào Hoa Yêu, Thụ Yêu.
+
+                            **8. Khoáng chất:**
+                            * **Phương Tây:** Golem, Crystal being, Stone guardian.
+                            * **Phương Đông:** Thạch Quái, Ngọc Hồn, Kim Tinh, Sơn Thần.
+
+                            **9. Linh thể:**
+                            * **Phương Tây:** Ghost, Spirit, Wraith, Shade.
+                            * **Phương Đông:** Quỷ Hồn, Oán Linh, Du Hồn, Phệ Hồn Quái.
+
+                            **10. Nguyên tố:**
+                            * **Phương Tây:** Fire, Water, Earth, Air elemental.
+                            * **Phương Đông:** Ngũ Hành Linh (Kim, Mộc, Thủy, Hỏa, Thổ), Lôi Linh, Âm Dương Linh.
+
+                            **11. Cơ giới:**
+                            * **Phương Tây:** Automaton, Clockwork, Mecha.
+                            * **Phương Đông:** Khôi Lỗi, Cơ Tượng, Thần Binh Hóa Hình.
+
+                            **12. Vũ trụ / Huyền ảo:**
+                            * **Phương Tây:** Star being, Cosmic entity, Nebula.
+                            * **Phương Đông:** Tinh Thần, Nguyệt Thần, Thái Dương Thần, Thiên Ma, Cửu Thiên Tinh Quái.
+
+                            **13. Tiểu yêu / Tinh linh:**
+                            * **Phương Tây:** Fairy, Pixie, Sprite, Wisp.
+                            * **Phương Đông:** Hồ Yêu, Sơn Tinh, Thủy Tinh, Lục Yêu, Dạ Xoa.
+
+                            **14. Sơn Hải Kinh đặc hữu:**
+                            * **Kỳ thú:** Bì Ngư, Cửu Đầu Điểu, Kinh Xà, Thao Thiết, Cùng Kỳ, Đào Ngột.
+                            * **Thần thú:** Kỳ Lân, Bạch Trạch, Hỗn Độn.
+                        `;
             
             console.log(`[PetService] Đang gọi AI để tạo 3 loại trứng...`);
             const response = await this.gptService.generatePKResponse(prompt);
