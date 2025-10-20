@@ -101,6 +101,47 @@ discordClient.on('interactionCreate', async (interaction) => {
         return;
     }
 });
+module.exports = async (client) => {
+    try {
+        console.log(`Đã đăng nhập với tên ${client.user.tag}!`);
+        console.log(`ID Bot: ${client.user.id}`);
+        
+        // Load commands
+        const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
+        const commands = [];
+        for (const file of commandFiles) {
+            const command = require(`../commands/${file}`);
+            commands.push(command.data.toJSON());
+        }
+
+        const rest = new REST({ version: '9' }).setToken(process.env.DISCORD_TOKEN);
+        
+        // Kiểm tra môi trường để quyết định cách đăng ký lệnh
+        if (process.env.NODE_ENV === 'development') {
+            const devGuildId = process.env.DEV_GUILD_ID;
+            if (devGuildId) {
+                // Đăng ký lệnh riêng cho server dev
+                await rest.put(
+                    Routes.applicationGuildCommands(client.user.id, devGuildId),
+                    { body: commands }
+                );
+                console.log('✅ Đã đăng ký commands riêng cho server dev thành công.');
+            } else {
+                console.warn('⚠️ Cảnh báo: Biến DEV_GUILD_ID không được tìm thấy. Các lệnh sẽ không được đăng ký ở môi trường dev.');
+            }
+        } else {
+            // Đăng ký global commands cho môi trường production
+            await rest.put(
+                Routes.applicationCommands(client.user.id),
+                { body: commands }
+            );
+            console.log('✅ Đã đăng ký global commands thành công.');
+        }
+
+    } catch (error) {
+        console.error('Lỗi khi xử lý ready:', error);
+    }
+};
 
 // Đăng nhập bot
 discordClient.login(process.env.DISCORD_TOKEN);

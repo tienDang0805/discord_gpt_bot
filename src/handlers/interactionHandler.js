@@ -4,7 +4,7 @@ const ImageGenerationService = require('../services/imageGenerationService');
 const { sendLongMessage } = require('../utils/messageHelper');
 const TextToAudioService = require('../services/textToAudioService');
 const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle, InteractionType } = require('discord.js');
-const PetService = require('../services/petService');
+const PetService = require('../services/pet/PetService');
 
 module.exports = async (interaction) => {
     if (!interaction.isChatInputCommand() && !interaction.isButton() && !interaction.isModalSubmit() && !interaction.isStringSelectMenu()) return;
@@ -107,36 +107,55 @@ async function handleSlashCommands(interaction, services) {
 // ===== PET COMMAND HANDLERS =====
 async function handlePetCommands(interaction, petService) {
     const subcommand = interaction.options.getSubcommand();
+    
+    // DEFER NGAY - cho TẤT CẢ commands
     await interaction.deferReply();
     
-    switch (subcommand) {
-        case 'start':
-            await petService.beginHatchingProcess(interaction);
-            break;
-            
-        case 'list':
-            await petService.showPetList(interaction);
-            break;
-            
-        case 'status':
-            // Deprecated - redirect to list
-            await interaction.editReply({ 
-                content: '⚠️ Lệnh này đã được thay thế. Hãy dùng `/pet list` để xem danh sách pets của bạn!', 
-                ephemeral: true 
+    try {
+        switch (subcommand) {
+            case 'start':
+                // EggService tự xử lý toàn bộ flow
+                await petService.beginHatchingProcess(interaction);
+                break;
+                
+            case 'list':
+                // DisplayService trả về data, handler gửi reply
+                const listData = await petService.showPetList(interaction);
+                await interaction.editReply(listData);
+                break;
+                
+            case 'status':
+                // Deprecated - redirect to list
+                await interaction.editReply({ 
+                    content: '⚠️ Lệnh này đã được thay thế. Hãy dùng `/pet list` để xem danh sách pets của bạn!'
+                });
+                break;
+                
+            case 'release':
+                // ManagementService trả về data, handler gửi reply
+                const releaseData = await petService.showReleasePetMenu(interaction);
+                await interaction.editReply(releaseData);
+                break;
+                
+            default:
+                await interaction.editReply({ 
+                    content: '❌ Lệnh không hợp lệ!'
+                });
+        }
+    } catch (error) {
+        console.error(`[handlePetCommands] Error in ${subcommand}:`, error);
+        
+        // Nếu chưa reply thì editReply, nếu đã reply rồi thì followUp
+        if (interaction.deferred || interaction.replied) {
+            await interaction.editReply({
+                content: '❌ Có lỗi xảy ra khi thực thi lệnh. Vui lòng thử lại sau.',
+                embeds: [],
+                components: []
             });
-            break;
-            
-        case 'release':
-            await petService.showReleasePetMenu(interaction);
-            break;
-            
-        default:
-            await interaction.editReply({ 
-                content: '❌ Lệnh không hợp lệ!', 
-                ephemeral: true 
-            });
+        }
     }
 }
+
 
 // ===== OTHER COMMAND HANDLERS =====
 async function handleWeatherCommand(interaction) {
@@ -771,13 +790,18 @@ async function handleButtonInteractions(interaction, services) {
         return;
     }
     if (interaction.customId.startsWith('view_pet_')) {
-        const petId = interaction.customId.replace('view_pet_', '');
-        console.log(`[InteractionHandler] View pet button pressed for petId: ${petId}`);
+        // Format customId: view_pet_[petId]_[requestUserId]
+        const parts = interaction.customId.split('_');
+        const petId = parts[2]; // Lấy pet ID
+        const requestUserId = parts[3]; // Lấy ID của chủ pet
         
-        await interaction.deferUpdate();
-        await petService.showSinglePetStatus(interaction, petId);
+        console.log(`[InteractionHandler] View pet button pressed for petId: ${petId} (Owner: ${requestUserId})`);
+        
+
+        await petService.showSinglePetStatus(interaction, petId, requestUserId); // ĐÃ THÊM requestUserId
         return;
     }
+
 
     // Pet release buttons (trực tiếp thả pet)
     if (interaction.customId.startsWith('release_pet_')) {

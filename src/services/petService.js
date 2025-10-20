@@ -16,6 +16,9 @@ class PetService {
         this.imageService = new ImageGenerationService();
         this.imageGenService = new ImageGenerationService();
         this.DEFAULT_QUESTION_TIME_LIMIT_MS = 15 * 1000;
+        
+        // Store cho phép ai được chọn trứng
+        this.activeEggSessions = new Map(); // userId -> { eggs: [], timestamp: Date }
     }
 
     /**
@@ -89,13 +92,15 @@ class PetService {
         console.log(`[PetService] Bắt đầu quy trình chọn trứng cho User ID: ${userId}`);
 
         try {
+            // Hiển thị typing indicator
+            await interaction.deferReply({ ephemeral: false });
+
             // Kiểm tra số lượng pets hiện tại
             const currentPets = await Pet.find({ ownerId: userId });
             if (currentPets.length >= MAX_PETS_PER_USER && !ADMIN_IDS.includes(userId)) {
                 console.log(`[PetService] User ID: ${userId} đã có đủ ${MAX_PETS_PER_USER} pets.`);
                 return interaction.editReply({ 
-                    content: `❌ Bạn đã có đủ **${MAX_PETS_PER_USER} pets** rồi! Hãy thả bớt pet cũ trước khi mở trứng mới.`, 
-                    ephemeral: true 
+                    content: `❌ Bạn đã có đủ **${MAX_PETS_PER_USER} pets** rồi! Hãy thả bớt pet cũ trước khi mở trứng mới.`
                 });
             }
 
@@ -103,15 +108,13 @@ class PetService {
             const eggCheck = await this.canOpenEgg(userId);
             if (!eggCheck.canOpen) {
                 return interaction.editReply({ 
-                    content: `⏰ Bạn đã hết lượt mở trứng hôm nay! Còn lại: **${eggCheck.remaining}/${MAX_EGGS_PER_DAY}** lượt.`, 
-                    ephemeral: true 
+                    content: `⏰ Bạn đã hết lượt mở trứng hôm nay! Còn lại: **${eggCheck.remaining}/${MAX_EGGS_PER_DAY}** lượt.`
                 });
             }
 
             // Prompt cải tiến để tạo trứng đa dạng hơn
-            // Thay thế prompt trong beginHatchingProcess method
-const prompt = `
-   Bạn là Người Sáng Tạo Trứng, bậc thầy tạo ra trứng từ mọi nền văn hóa , Chủng loại.
+            const prompt = `
+            Bạn là Người Sáng Tạo Trứng, bậc thầy tạo ra trứng từ mọi nền văn hóa , Chủng loại.
 
                         ## Quy tắc quan trọng về ĐỘ HIẾM & TÊN TRỨNG
                         - Mỗi quả trứng phải có tên phù hợp tuyệt đối với độ hiếm , : Các Chủng Tộc và Sinh Vật
@@ -190,21 +193,36 @@ const prompt = `
                             * Legend 1%
                             - Không lặp lại tên hoặc mô tả từ bất kỳ kết quả trước đó.
                             `;
-            
             console.log(`[PetService] Đang gọi AI để tạo 3 loại trứng...`);
             const response = await this.gptService.generatePKResponse(prompt);
             const eggs = JSON.parse(response);
             console.log(`[PetService] AI đã trả về ${eggs.length} loại trứng.`);
 
+            // Lưu session để chỉ user này mới có thể chọn trứng
+            this.activeEggSessions.set(userId, {
+                eggs: eggs,
+                timestamp: new Date(),
+                interactionId: interaction.id
+            });
+
+            // Tự động xóa session sau 5 phút
+            setTimeout(() => {
+                if (this.activeEggSessions.has(userId)) {
+                    this.activeEggSessions.delete(userId);
+                    console.log(`[PetService] Auto-deleted egg session for User ID: ${userId}`);
+                }
+            }, 5 * 60 * 1000); // 5 phút
+
             const embed = new EmbedBuilder()
                 .setTitle('🥚 Lễ Thiêng Chọn Trứng')
-                .setDescription(`Có ba quả trứng thần bí hiện ra trước mặt bạn, mỗi quả đều chứa đựng một linh hồn cổ xưa đang chờ được thức tỉnh...\n\n**Còn lại: ${eggCheck.remaining}/${MAX_EGGS_PER_DAY} lượt hôm nay**\n\nHãy chọn một quả trứng để bắt đầu cuộc hành trình của bạn!`)
-                .setColor(0xFAEBD7);
+                .setDescription(`Có ba quả trứng thần bí hiện ra trước mặt bạn, mỗi quả đều chứa đựng một linh hồn cổ xưa đang chờ được thức tỉnh...\n\n**Còn lại: ${eggCheck.remaining}/${MAX_EGGS_PER_DAY} lượt hôm nay**\n\n⚠️ **Chỉ ${interaction.user.displayName} mới có thể chọn trứng!**\n\nHãy chọn một quả trứng để bắt đầu cuộc hành trình của bạn!`)
+                .setColor(0xFAEBD7)
+                .setFooter({ text: `Phiên chọn trứng sẽ hết hạn sau 5 phút` });
 
             const buttons = eggs.map(egg => {
                 embed.addFields({ name: `🥚 ${egg.type}`, value: `*${egg.description}*` });
                 return new ButtonBuilder()
-                    .setCustomId(`select_egg_${egg.type.replace(/\s+/g, '_')}`)
+                    .setCustomId(`select_egg_${egg.type.replace(/\s+/g, '_')}_${userId}`)
                     .setLabel(`Chọn ${egg.type}`)
                     .setStyle(ButtonStyle.Secondary)
                     .setEmoji('🥚');
@@ -224,428 +242,489 @@ const prompt = `
     /**
      * Xử lý việc nở trứng sau khi người chơi đã chọn
      */
-   /**
- * Xử lý việc nở trứng sau khi người chơi đã chọn
- */
-async hatchEgg(interaction, eggType) {
-    const userId = interaction.user.id;
-    console.log(`[PetService] Bắt đầu nở trứng loại "${eggType}" cho User ID: ${userId}`);
-
-    try {
-        // Gửi message trứng đang nở ngay lập tức
-        const hatchingEmbed = new EmbedBuilder()
-            .setTitle('🥚 Trứng Đang Nở...')
-            .setDescription('✨ Có điều gì đó đang xảy ra bên trong quả trứng...\n⏰ Vui lòng chờ trong giây lát...')
-            .setColor(0xFFD700);
+    async hatchEgg(interaction, eggType, requestUserId) {
+        const userId = interaction.user.id;
         
-        await interaction.update({ embeds: [hatchingEmbed], components: [] });
-
-        // Thêm delay để tạo cảm giác hồi hộp
-        await new Promise(resolve => setTimeout(resolve, 3000));
-
-        // Kiểm tra lại số lượng pets
-        const currentPets = await Pet.find({ ownerId: userId });
-        if (currentPets.length >= MAX_PETS_PER_USER && !ADMIN_IDS.includes(userId)) {
-            return interaction.editReply({ 
-                embeds: [new EmbedBuilder()
-                    .setTitle('❌ Lỗi')
-                    .setDescription(`Bạn đã có đủ **${MAX_PETS_PER_USER} pets** rồi!`)
-                    .setColor(0xFF0000)
-                ], 
-                components: [] 
-            });
-        }
-
-        console.log(`[PetService] Đang gọi hàm generatePetFromEgg với loại trứng: ${eggType}`);
-        const petData = await this.gptService.generatePetFromEgg(eggType);
-        console.log(`[PetService] AI đã tạo xong dữ liệu pet cho User ID: ${userId}`, petData);
-
-        const imagePrompt = `masterpiece, best quality, 4k, ultra-detailed, cinematic lighting, epic fantasy art, trending on artstation, a small adorable baby creature, ${petData.description_en_keywords}, species: ${petData.species}, element: ${petData.element}, rarity: ${petData.rarity}, isolated on a simple magical background`;
-        console.log(`[PetService] Prompt tạo ảnh cho User ID: ${userId}: "${imagePrompt}"`);
-
-        const imageResult = await this.imageService.generateImage(imagePrompt);
-        if (!imageResult.success) {
-            throw new Error(imageResult.error || "AI không thể tạo hình ảnh cho pet.");
-        }
-        console.log(`[PetService] Tạo ảnh thành công cho User ID: ${userId}`);
-
-        const finalStats = {
-            hp: petData.base_stats.hp, maxHp: petData.base_stats.hp,
-            mp: petData.base_stats.mp, maxMp: petData.base_stats.mp,
-            atk: petData.base_stats.atk, def: petData.base_stats.def,
-            int: petData.base_stats.int, spd: petData.base_stats.spd,
-        };
-
-        // Lưu ảnh vào database dưới dạng base64 (nếu cần)
-        const imageBase64 = imageResult.imageBuffer ? imageResult.imageBuffer.toString('base64') : null;
-
-        const newPet = new Pet({
-            ownerId: userId,
-            name: petData.species,
-            species: petData.species,
-            description: petData.description_vi,
-            rarity: petData.rarity,
-            element: petData.element,
-            stats: finalStats,
-            skills: petData.skills, 
-            traits: petData.traits, 
-            imageBasePrompt: imagePrompt,
-            imageData: imageBase64,
-            expToNextLevel: 100
-        });
-
-        console.log(`[PetService] Chuẩn bị lưu pet mới vào DB cho User ID: ${userId}`);
-        await newPet.save();
-        console.log(`[PetService] Đã lưu pet mới vào DB thành công cho User ID: ${userId}`);
-
-        // Cập nhật lượt mở trứng
-        await this.updateEggCooldown(userId);
-
-        const rarityColors = { Normal: 0xAAAAAA, Magic: 0x00BFFF, Rare: 0xFFD700, Unique: 0xFF8C00, Legend: 0xFF4500 };
-        const embed = new EmbedBuilder()
-            .setTitle(`🎉 CHÚC MỪNG! THÚ CƯNG CỦA BạN ĐÃ NỞ! 🎉`)
-            .setDescription(`Từ trong quả trứng **${eggType.replace(/_/g, ' ')}**, một **${petData.species}** đã ra đời!`)
-            .setColor(rarityColors[petData.rarity] || 0xFFFFFF)
-            .addFields(
-                { name: '🌟 Tên', value: newPet.name, inline: true },
-                { name: `✨ Độ hiếm`, value: newPet.rarity, inline: true},
-                { name: `💧 Hệ`, value: newPet.element, inline: true},
-                { name: '📜 Mô tả', value: newPet.description }
-            )
-            .setImage('attachment://pet-image.png');
-
-        if (newPet.skills && newPet.skills.length > 0) {
-            newPet.skills.forEach((skill, index) => {
-                embed.addFields({
-                    name: `💥 Kỹ năng ${index + 1}: ${skill.name}`,
-                    value: `*${skill.description}* (Cost: ${skill.cost} MP, Type: ${skill.type})`
-                });
-            });
-        }
-
-        if (newPet.traits && newPet.traits.length > 0) {
-            newPet.traits.forEach((trait, index) => {
-                embed.addFields({
-                    name: `💡 Nội tại ${index + 1}: ${trait.name}`,
-                    value: `*${trait.description}*`
-                });
-            });
-        }
-
-        embed.setFooter({ text: `Dùng /pet list để xem tất cả pets của bạn!` });
-
-        await interaction.editReply({ 
-            content: `<@${userId}>`,
-            embeds: [embed], 
-            files: [{ attachment: imageResult.imageBuffer, name: 'pet-image.png' }]
-        });
-        console.log(`[PetService] Đã gửi thông báo pet nở thành công cho User ID: ${userId}`);
-
-    } catch (error) {
-        console.error(`[PetService][CRITICAL ERROR] Lỗi trong quá trình hatchEgg cho User ID: ${userId}:`, error);
-        const errorEmbed = new EmbedBuilder()
-            .setTitle('❌ Lỗi')
-            .setDescription(`Bot gặp lỗi trong quá trình nở trứng: ${error.message}`)
-            .setColor(0xFF0000);
-            
-        await interaction.editReply({ embeds: [errorEmbed] });
-    }
-}
-    /**
-     * Hiển thị danh sách pets của user
-     */
-    // Alternative: Button-based pet list (thay thế trong PetService)
-
-/**
- * Hiển thị danh sách pets của user bằng buttons
- */
-async showPetList(interaction) {
-    const userId = interaction.user.id;
-    console.log(`[PetService] Hiển thị danh sách pets cho User ID: ${userId}`);
-
-    try {
-        const pets = await Pet.find({ ownerId: userId });
-        console.log(`[PetService] Tìm thấy ${pets?.length || 0} pets cho User ID: ${userId}`);
-        
-        if (!pets || pets.length === 0) {
-            return interaction.editReply({ 
-                content: `❌ Bạn chưa có thú cưng nào. Dùng \`/pet start\` để bắt đầu!`, 
+        // Kiểm tra xem có phải user đã gọi beginHatchingProcess không
+        if (userId !== requestUserId) {
+            return interaction.reply({ 
+                content: `❌ Chỉ <@${requestUserId}> mới có thể chọn trứng này!`, 
                 ephemeral: true 
             });
         }
 
-        const embed = new EmbedBuilder()
-            .setTitle(`📋 Danh Sách Pets của ${interaction.user.displayName}`)
-            .setDescription(`Tổng cộng: **${pets.length}/${MAX_PETS_PER_USER}** pets\n\nChọn pet bạn muốn xem chi tiết:`)
-            .setColor(0x3498DB);
-
-        // Hiển thị danh sách pets trong embed
-        pets.forEach((pet, index) => {
-            const rarityEmoji = this.getRarityEmoji(pet.rarity);
-            embed.addFields({
-                name: `${rarityEmoji} ${pet.name} (Level ${pet.level})`,
-                value: `${pet.rarity} - ${pet.element} - HP: ${pet.stats.hp}/${pet.stats.maxHp}`,
-                inline: true
+        // Kiểm tra session còn hợp lệ không
+        const session = this.activeEggSessions.get(userId);
+        if (!session) {
+            return interaction.reply({ 
+                content: `❌ Phiên chọn trứng đã hết hạn! Hãy dùng \`/pet start\` để bắt đầu lại.`, 
+                ephemeral: true 
             });
-        });
-
-        // Tạo buttons cho pets (tối đa 5 buttons per row, max 5 rows = 25 pets)
-        const rows = [];
-        const petsPerRow = 3;
-        
-        for (let i = 0; i < pets.length; i += petsPerRow) {
-            const rowPets = pets.slice(i, i + petsPerRow);
-            const buttons = rowPets.map((pet, index) => {
-                const globalIndex = i + index;
-                return new ButtonBuilder()
-                    .setCustomId(`view_pet_${pet._id}`)
-                    .setLabel(`${globalIndex + 1}. ${pet.name}`)
-                    .setStyle(ButtonStyle.Primary)
-                    .setEmoji(this.getRarityEmoji(pet.rarity));
-            });
-            
-            rows.push(new ActionRowBuilder().addComponents(buttons));
-            
-            // Discord giới hạn 5 rows
-            if (rows.length >= 5) break;
         }
 
-        await interaction.editReply({ 
-            embeds: [embed], 
-            components: rows 
-        });
-        console.log(`[PetService] Đã gửi danh sách pets thành công cho User ID: ${userId}`);
+        // Kiểm tra egg type có trong session không
+        const validEggTypes = session.eggs.map(egg => egg.type.replace(/\s+/g, '_'));
+        const normalizedEggType = eggType.replace(/\s+/g, '_');
+        if (!validEggTypes.includes(normalizedEggType)) {
+            return interaction.reply({ 
+                content: `❌ Loại trứng không hợp lệ!`, 
+                ephemeral: true 
+            });
+        }
 
-    } catch (error) {
-        console.error(`[PetService][ERROR] Lỗi trong showPetList cho User ID: ${userId}:`, error);
-        console.error(`[PetService][ERROR] Stack trace:`, error.stack);
-        
+        console.log(`[PetService] Bắt đầu nở trứng loại "${eggType}" cho User ID: ${userId}`);
+
         try {
-            await interaction.editReply({
-                content: "❌ Có lỗi xảy ra khi lấy danh sách pets của bạn. Vui lòng thử lại sau.",
-                components: []
-            });
-        } catch (replyError) {
-            console.error(`[PetService][ERROR] Không thể gửi error message:`, replyError);
-        }
-    }
-}
+            // Xóa session vì user đã chọn trứng
+            this.activeEggSessions.delete(userId);
 
-/**
- * Hiển thị menu để chọn pet cần thả bằng buttons
- */
-async showReleasePetMenu(interaction) {
-    const userId = interaction.user.id;
-    console.log(`[PetService] Hiển thị menu thả pet cho User ID: ${userId}`);
+            // Show typing indicator
+            await interaction.deferUpdate();
 
-    try {
-        const pets = await Pet.find({ ownerId: userId });
-        if (!pets || pets.length === 0) {
-            return interaction.editReply({ 
-                content: `❌ Bạn chưa có thú cưng nào để thả.`, 
-                ephemeral: true 
-            });
-        }
-
-        const embed = new EmbedBuilder()
-            .setTitle(`🕊️ Chọn Pet Để Thả`)
-            .setDescription(`Chọn pet bạn muốn thả về tự nhiên. **Hành động này không thể hoàn tác!**`)
-            .setColor(0xFF6B6B);
-
-        // Hiển thị danh sách pets trong embed
-        pets.forEach((pet, index) => {
-            const rarityEmoji = this.getRarityEmoji(pet.rarity);
-            embed.addFields({
-                name: `${rarityEmoji} ${pet.name} (Level ${pet.level})`,
-                value: `${pet.rarity} - ${pet.element}`,
-                inline: true
-            });
-        });
-
-        // Tạo buttons để thả pets
-        const rows = [];
-        const petsPerRow = 3;
-        
-        for (let i = 0; i < pets.length; i += petsPerRow) {
-            const rowPets = pets.slice(i, i + petsPerRow);
-            const buttons = rowPets.map((pet, index) => {
-                const globalIndex = i + index;
-                return new ButtonBuilder()
-                    .setCustomId(`release_pet_${pet._id}`)
-                    .setLabel(`${globalIndex + 1}. Thả ${pet.name}`)
-                    .setStyle(ButtonStyle.Danger)
-                    .setEmoji('🕊️');
-            });
+            // Gửi message trứng đang nở ngay lập tức
+            const hatchingEmbed = new EmbedBuilder()
+                .setTitle('🥚 Trứng Đang Nở...')
+                .setDescription('✨ Có điều gì đó đang xảy ra bên trong quả trứng...\n⏰ Vui lòng chờ trong giây lát...')
+                .setColor(0xFFD700);
             
-            rows.push(new ActionRowBuilder().addComponents(buttons));
-            if (rows.length >= 5) break;
+            await interaction.editReply({ embeds: [hatchingEmbed], components: [] });
+
+            // Thêm delay để tạo cảm giác hồi hộp
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
+            // Kiểm tra lại số lượng pets
+            const currentPets = await Pet.find({ ownerId: userId });
+            if (currentPets.length >= MAX_PETS_PER_USER && !ADMIN_IDS.includes(userId)) {
+                return interaction.editReply({ 
+                    embeds: [new EmbedBuilder()
+                        .setTitle('❌ Lỗi')
+                        .setDescription(`Bạn đã có đủ **${MAX_PETS_PER_USER} pets** rồi!`)
+                        .setColor(0xFF0000)
+                    ], 
+                    components: [] 
+                });
+            }
+
+            console.log(`[PetService] Đang gọi hàm generatePetFromEgg với loại trứng: ${eggType}`);
+            const petData = await this.gptService.generatePetFromEgg(eggType);
+            console.log(`[PetService] AI đã tạo xong dữ liệu pet cho User ID: ${userId}`, petData);
+
+            const imagePrompt = `masterpiece, best quality, 4k, ultra-detailed, cinematic lighting, epic fantasy art, trending on artstation, a small adorable baby creature, ${petData.description_en_keywords}, species: ${petData.species}, element: ${petData.element}, rarity: ${petData.rarity}, isolated on a simple magical background`;
+            console.log(`[PetService] Prompt tạo ảnh cho User ID: ${userId}: "${imagePrompt}"`);
+
+            const imageResult = await this.imageService.generateImage(imagePrompt);
+            if (!imageResult.success) {
+                throw new Error(imageResult.error || "AI không thể tạo hình ảnh cho pet.");
+            }
+            console.log(`[PetService] Tạo ảnh thành công cho User ID: ${userId}`);
+
+            const finalStats = {
+                hp: petData.base_stats.hp, maxHp: petData.base_stats.hp,
+                mp: petData.base_stats.mp, maxMp: petData.base_stats.mp,
+                atk: petData.base_stats.atk, def: petData.base_stats.def,
+                int: petData.base_stats.int, spd: petData.base_stats.spd,
+            };
+
+            // Lưu ảnh vào database dưới dạng base64 (nếu cần)
+            const imageBase64 = imageResult.imageBuffer ? imageResult.imageBuffer.toString('base64') : null;
+
+            const newPet = new Pet({
+                ownerId: userId,
+                name: petData.species,
+                species: petData.species,
+                description: petData.description_vi,
+                rarity: petData.rarity,
+                element: petData.element,
+                stats: finalStats,
+                skills: petData.skills, 
+                traits: petData.traits, 
+                imageBasePrompt: imagePrompt,
+                imageData: imageBase64,
+                expToNextLevel: 100
+            });
+
+            console.log(`[PetService] Chuẩn bị lưu pet mới vào DB cho User ID: ${userId}`);
+            await newPet.save();
+            console.log(`[PetService] Đã lưu pet mới vào DB thành công cho User ID: ${userId}`);
+
+            // Cập nhật lượt mở trứng
+            await this.updateEggCooldown(userId);
+
+            const rarityColors = { Normal: 0xAAAAAA, Magic: 0x00BFFF, Rare: 0xFFD700, Unique: 0xFF8C00, Legend: 0xFF4500 };
+            const embed = new EmbedBuilder()
+                .setTitle(`🎉 CHÚC MỪNG! THÚ CƯNG CỦA BạN ĐÃ NỞ! 🎉`)
+                .setDescription(`Từ trong quả trứng **${eggType.replace(/_/g, ' ')}**, một **${petData.species}** đã ra đời!`)
+                .setColor(rarityColors[petData.rarity] || 0xFFFFFF)
+                .addFields(
+                    { name: '🌟 Tên', value: newPet.name, inline: true },
+                    { name: `✨ Độ hiếm`, value: newPet.rarity, inline: true},
+                    { name: `💧 Hệ`, value: newPet.element, inline: true},
+                    { name: '📜 Mô tả', value: newPet.description }
+                )
+                .setImage('attachment://pet-image.png');
+
+            if (newPet.skills && newPet.skills.length > 0) {
+                newPet.skills.forEach((skill, index) => {
+                    embed.addFields({
+                        name: `💥 Kỹ năng ${index + 1}: ${skill.name}`,
+                        value: `*${skill.description}* (Cost: ${skill.cost} MP, Type: ${skill.type})`
+                    });
+                });
+            }
+
+            if (newPet.traits && newPet.traits.length > 0) {
+                newPet.traits.forEach((trait, index) => {
+                    embed.addFields({
+                        name: `💡 Nội tại ${index + 1}: ${trait.name}`,
+                        value: `*${trait.description}*`
+                    });
+                });
+            }
+
+            embed.setFooter({ text: `Dùng /pet list để xem tất cả pets của bạn!` });
+
+            await interaction.editReply({ 
+                content: `<@${userId}>`,
+                embeds: [embed], 
+                files: [{ attachment: imageResult.imageBuffer, name: 'pet-image.png' }]
+            });
+            console.log(`[PetService] Đã gửi thông báo pet nở thành công cho User ID: ${userId}`);
+
+        } catch (error) {
+            console.error(`[PetService][CRITICAL ERROR] Lỗi trong quá trình hatchEgg cho User ID: ${userId}:`, error);
+            const errorEmbed = new EmbedBuilder()
+                .setTitle('❌ Lỗi')
+                .setDescription(`Bot gặp lỗi trong quá trình nở trứng: ${error.message}`)
+                .setColor(0xFF0000);
+                
+            await interaction.editReply({ embeds: [errorEmbed] });
         }
-
-        await interaction.editReply({ embeds: [embed], components: rows });
-
-    } catch (error) {
-        console.error(`[PetService][ERROR] Lỗi trong showReleasePetMenu:`, error);
-        await interaction.editReply("❌ Có lỗi xảy ra khi hiển thị menu thả pet.");
     }
-}
+
+    /**
+     * Hiển thị danh sách pets của user bằng buttons
+     */
+    async showPetList(interaction) {
+        const userId = interaction.user.id;
+        console.log(`[PetService] Hiển thị danh sách pets cho User ID: ${userId}`);
+
+        try {
+            // Show typing indicator
+            await interaction.deferReply({ ephemeral: false });
+
+            const pets = await Pet.find({ ownerId: userId });
+            console.log(`[PetService] Tìm thấy ${pets?.length || 0} pets cho User ID: ${userId}`);
+            
+            if (!pets || pets.length === 0) {
+                return interaction.editReply({ 
+                    content: `❌ Bạn chưa có thú cưng nào. Dùng \`/pet start\` để bắt đầu!`
+                });
+            }
+
+            const embed = new EmbedBuilder()
+                .setTitle(`📋 Danh Sách Pets của ${interaction.user.displayName}`)
+                .setDescription(`Tổng cộng: **${pets.length}/${MAX_PETS_PER_USER}** pets\n\n⚠️ **Chỉ ${interaction.user.displayName} mới có thể tương tác với pets!**\n\nChọn pet bạn muốn xem chi tiết:`)
+                .setColor(0x3498DB);
+
+            // Hiển thị danh sách pets trong embed
+            pets.forEach((pet, index) => {
+                const rarityEmoji = this.getRarityEmoji(pet.rarity);
+                embed.addFields({
+                    name: `${rarityEmoji} ${pet.name} (Level ${pet.level})`,
+                    value: `${pet.rarity} - ${pet.element} - HP: ${pet.stats.hp}/${pet.stats.maxHp}`,
+                    inline: true
+                });
+            });
+
+            // Tạo buttons cho pets (tối đa 5 buttons per row, max 5 rows = 25 pets)
+            const rows = [];
+            const petsPerRow = 3;
+            
+            for (let i = 0; i < pets.length; i += petsPerRow) {
+                const rowPets = pets.slice(i, i + petsPerRow);
+                const buttons = rowPets.map((pet, index) => {
+                    const globalIndex = i + index;
+                    return new ButtonBuilder()
+                        .setCustomId(`view_pet_${pet._id}_${userId}`)
+                        .setLabel(`${globalIndex + 1}. ${pet.name}`)
+                        .setStyle(ButtonStyle.Primary)
+                        .setEmoji(this.getRarityEmoji(pet.rarity));
+                });
+                
+                rows.push(new ActionRowBuilder().addComponents(buttons));
+                
+                // Discord giới hạn 5 rows
+                if (rows.length >= 5) break;
+            }
+
+            await interaction.editReply({ 
+                embeds: [embed], 
+                components: rows 
+            });
+            console.log(`[PetService] Đã gửi danh sách pets thành công cho User ID: ${userId}`);
+
+        } catch (error) {
+            console.error(`[PetService][ERROR] Lỗi trong showPetList cho User ID: ${userId}:`, error);
+            console.error(`[PetService][ERROR] Stack trace:`, error.stack);
+            
+            try {
+                await interaction.editReply({
+                    content: "❌ Có lỗi xảy ra khi lấy danh sách pets của bạn. Vui lòng thử lại sau.",
+                    components: []
+                });
+            } catch (replyError) {
+                console.error(`[PetService][ERROR] Không thể gửi error message:`, replyError);
+            }
+        }
+    }
+
+    /**
+     * Hiển thị menu để chọn pet cần thả bằng buttons
+     */
+    async showReleasePetMenu(interaction) {
+        const userId = interaction.user.id;
+        console.log(`[PetService] Hiển thị menu thả pet cho User ID: ${userId}`);
+
+        try {
+            // Show typing indicator - PRIVATE vì đây là action nhạy cảm
+            await interaction.deferReply({ ephemeral: true });
+
+            const pets = await Pet.find({ ownerId: userId });
+            if (!pets || pets.length === 0) {
+                return interaction.editReply({ 
+                    content: `❌ Bạn chưa có thú cưng nào để thả.`
+                });
+            }
+
+            const embed = new EmbedBuilder()
+                .setTitle(`🕊️ Chọn Pet Để Thả`)
+                .setDescription(`Chọn pet bạn muốn thả về tự nhiên. **Hành động này không thể hoàn tác!**`)
+                .setColor(0xFF6B6B);
+
+            // Hiển thị danh sách pets trong embed
+            pets.forEach((pet, index) => {
+                const rarityEmoji = this.getRarityEmoji(pet.rarity);
+                embed.addFields({
+                    name: `${rarityEmoji} ${pet.name} (Level ${pet.level})`,
+                    value: `${pet.rarity} - ${pet.element}`,
+                    inline: true
+                });
+            });
+
+            // Tạo buttons để thả pets
+            const rows = [];
+            const petsPerRow = 3;
+            
+            for (let i = 0; i < pets.length; i += petsPerRow) {
+                const rowPets = pets.slice(i, i + petsPerRow);
+                const buttons = rowPets.map((pet, index) => {
+                    const globalIndex = i + index;
+                    return new ButtonBuilder()
+                        .setCustomId(`release_pet_${pet._id}_${userId}`)
+                        .setLabel(`${globalIndex + 1}. Thả ${pet.name}`)
+                        .setStyle(ButtonStyle.Danger)
+                        .setEmoji('🕊️');
+                });
+                
+                rows.push(new ActionRowBuilder().addComponents(buttons));
+                if (rows.length >= 5) break;
+            }
+
+            await interaction.editReply({ embeds: [embed], components: rows });
+
+        } catch (error) {
+            console.error(`[PetService][ERROR] Lỗi trong showReleasePetMenu:`, error);
+            await interaction.editReply("❌ Có lỗi xảy ra khi hiển thị menu thả pet.");
+        }
+    }
 
     /**
      * Hiển thị thông tin chi tiết của một pet cụ thể
      */
-   /**
- * Hiển thị thông tin chi tiết của một pet cụ thể
- */
-async showSinglePetStatus(interaction, petId) {
-    try {
-        console.log(`[DEBUG] showSinglePetStatus called with petId: ${petId}`);
-        
-        // Validate ObjectId format
-        if (!mongoose.Types.ObjectId.isValid(petId)) {
-            console.error(`[DEBUG] Invalid petId format: ${petId}`);
-            return interaction.editReply({ 
-                content: '❌ ID pet không hợp lệ!', 
-                ephemeral: true 
-            });
-        }
-        
-        const pet = await Pet.findById(petId);
-        console.log(`[DEBUG] Pet found:`, pet ? `${pet.name} (${pet._id})` : 'null');
-        
-        if (!pet || pet.ownerId !== interaction.user.id) {
-            console.log(`[DEBUG] Pet not found or wrong owner. Pet ownerId: ${pet?.ownerId}, User ID: ${interaction.user.id}`);
-            return interaction.editReply({ 
-                content: '❌ Không tìm thấy thú cưng này!', 
-                ephemeral: true 
-            });
-        }
-
-        console.log(`[DEBUG] Creating status embed for pet: ${pet.name}`);
-        
-        const rarityColors = { Normal: 0xAAAAAA, Magic: 0x00BFFF, Rare: 0xFFD700, Unique: 0x9400D3, Legend: 0xFF4500 };
-        const embed = new EmbedBuilder()
-            .setColor(rarityColors[pet.rarity] || 0x3498DB)
-            .setTitle(`📜 BẢNG TRẠNG THÁI - ${pet.name}`)
-            .setDescription(`*${pet.description}*`)
-            .addFields(
-                { name: '🌟 Loài', value: `**${pet.species}**`, inline: true },
-                { name: '🔮 Độ hiếm', value: `**${pet.rarity}**`, inline: true },
-                { name: '⚡ Nguyên tố', value: `**${pet.element}**`, inline: true },
-                { name: '📊 Cấp độ', value: `**${pet.level}**`, inline: true },
-                { name: '🎯 Kinh nghiệm', value: `\`${pet.exp} / ${pet.expToNextLevel}\``, inline: true },
-                { name: '🏆 Giai đoạn tiến hóa', value: `**${pet.evolutionStage}**`, inline: true }
-            )
-            .addFields(
-                { name: '❤️ HP', value: `\`${pet.stats.hp} / ${pet.stats.maxHp}\``, inline: true },
-                { name: '💙 MP', value: `\`${pet.stats.mp} / ${pet.stats.maxMp}\``, inline: true },
-                { name: '⚡ Stamina', value: `\`${pet.status.stamina} / ${pet.status.maxStamina}\``, inline: true },
-                { name: '⚔️ Tấn công', value: `\`${pet.stats.atk}\``, inline: true },
-                { name: '🛡️ Phòng thủ', value: `\`${pet.stats.def}\``, inline: true },
-                { name: '🧠 Trí tuệ', value: `\`${pet.stats.int}\``, inline: true },
-                { name: '💨 Tốc độ', value: `\`${pet.stats.spd}\``, inline: true },
-                { name: '🍎 Độ đói', value: `\`${pet.status.hunger}/100\``, inline: true },
-                { name: '📅 Ngày tạo', value: `\`${pet.createdAt.toLocaleDateString('vi-VN')}\``, inline: true }
-            );
-
-        // Handle image loading
-        let imageBuffer = null;
-        if (pet.imageData) {
-            try {
-                imageBuffer = Buffer.from(pet.imageData, 'base64');
-                embed.setThumbnail('attachment://pet-image.png');
-                console.log(`[DEBUG] Loaded image from DB for pet: ${pet.name}`);
-            } catch (imageError) {
-                console.warn(`[DEBUG] Failed to load image from DB:`, imageError);
-            }
-        }
-
-        // Regenerate image if needed
-        if (!imageBuffer && pet.imageBasePrompt) {
-            console.log(`[DEBUG] Regenerating image for pet: ${pet.name}`);
-            try {
-                const imageResult = await this.imageService.generateImage(pet.imageBasePrompt);
-                if (imageResult.success) {
-                    imageBuffer = imageResult.imageBuffer;
-                    embed.setThumbnail('attachment://pet-image.png');
-                    
-                    // Save new image to DB
-                    try {
-                        pet.imageData = imageBuffer.toString('base64');
-                        await pet.save();
-                        console.log(`[DEBUG] Saved new image to DB for pet: ${pet.name}`);
-                    } catch (saveError) {
-                        console.warn(`[DEBUG] Failed to save image to DB:`, saveError);
-                    }
-                }
-            } catch (imageGenError) {
-                console.warn(`[DEBUG] Failed to regenerate image:`, imageGenError);
-            }
-        }
-
-        // ✅ Add all skills (properly handle array)
-        if (pet.skills && pet.skills.length > 0) {
-            pet.skills.forEach((skill, index) => {
-                embed.addFields({ 
-                    name: `💥 Kỹ năng ${index + 1}: ${skill.name}`, 
-                    value: `*${skill.description}*\n🔹 **Type**: ${skill.type} | **Cost**: ${skill.cost} MP | **Power**: ${skill.power}`
-                });
-            });
-        } else {
-            embed.addFields({ 
-                name: `💥 Kỹ năng`, 
-                value: `*Chưa có kỹ năng nào*`
-            });
-        }
-        
-        // ✅ Add all traits (properly handle array)
-        if (pet.traits && pet.traits.length > 0) {
-            pet.traits.forEach((trait, index) => {
-                embed.addFields({ 
-                    name: `💡 Nội tại ${index + 1}: ${trait.name}`, 
-                    value: `*${trait.description}*`
-                });
-            });
-        } else {
-            embed.addFields({ 
-                name: `💡 Nội tại`, 
-                value: `*Chưa có nội tại nào*`
-            });
-        }
-        
-        console.log(`[DEBUG] Sending status reply for pet: ${pet.name}`);
-        
-        await interaction.editReply({ 
-            embeds: [embed],
-            files: imageBuffer ? [{ attachment: imageBuffer, name: 'pet-image.png' }] : [],
-            components: []
-        });
-        
-        console.log(`[DEBUG] Successfully sent status for pet: ${pet.name}`);
-
-    } catch (error) {
-        console.error(`[DEBUG] Error in showSinglePetStatus:`, error);
-        console.error(`[DEBUG] Error stack:`, error.stack);
-        
+    async showSinglePetStatus(interaction, petId, requestUserId) {
         try {
-            await interaction.editReply({
-                content: `❌ Có lỗi xảy ra khi hiển thị thông tin pet: ${error.message}`,
-                components: []
+            const userId = interaction.user.id;
+            
+            // Kiểm tra quyền truy cập - chỉ owner mới được xem
+            if (userId !== requestUserId) {
+                return interaction.reply({ 
+                    content: `❌ Chỉ <@${requestUserId}> mới có thể xem thông tin pet này!`, 
+                    ephemeral: true 
+                });
+            }
+
+            console.log(`[DEBUG] showSinglePetStatus called with petId: ${petId}`);
+            
+            // Show typing indicator - PRIVATE vì đây là thông tin cá nhân
+            await interaction.deferUpdate();
+            
+            // Validate ObjectId format
+            if (!mongoose.Types.ObjectId.isValid(petId)) {
+                console.error(`[DEBUG] Invalid petId format: ${petId}`);
+                return interaction.editReply({ 
+                    content: '❌ ID pet không hợp lệ!',
+                    components: []
+                });
+            }
+            
+            const pet = await Pet.findById(petId);
+            console.log(`[DEBUG] Pet found:`, pet ? `${pet.name} (${pet._id})` : 'null');
+            
+            if (!pet || pet.ownerId !== userId) {
+                console.log(`[DEBUG] Pet not found or wrong owner. Pet ownerId: ${pet?.ownerId}, User ID: ${userId}`);
+                return interaction.editReply({ 
+                    content: '❌ Không tìm thấy thú cưng này!',
+                    components: []
+                });
+            }
+
+            console.log(`[DEBUG] Creating status embed for pet: ${pet.name}`);
+            
+            const rarityColors = { Normal: 0xAAAAAA, Magic: 0x00BFFF, Rare: 0xFFD700, Unique: 0x9400D3, Legend: 0xFF4500 };
+            const embed = new EmbedBuilder()
+                .setColor(rarityColors[pet.rarity] || 0x3498DB)
+                .setTitle(`📜 BẢNG TRẠNG THÁI - ${pet.name}`)
+                .setDescription(`*${pet.description}*`)
+                .addFields(
+                    { name: '🌟 Loài', value: `**${pet.species}**`, inline: true },
+                    { name: '🔮 Độ hiếm', value: `**${pet.rarity}**`, inline: true },
+                    { name: '⚡ Nguyên tố', value: `**${pet.element}**`, inline: true },
+                    { name: '📊 Cấp độ', value: `**${pet.level}**`, inline: true },
+                    { name: '🎯 Kinh nghiệm', value: `\`${pet.exp} / ${pet.expToNextLevel}\``, inline: true },
+                    { name: '🏆 Giai đoạn tiến hóa', value: `**${pet.evolutionStage}**`, inline: true }
+                )
+                .addFields(
+                    { name: '❤️ HP', value: `\`${pet.stats.hp} / ${pet.stats.maxHp}\``, inline: true },
+                    { name: '💙 MP', value: `\`${pet.stats.mp} / ${pet.stats.maxMp}\``, inline: true },
+                    { name: '⚡ Stamina', value: `\`${pet.status.stamina} / ${pet.status.maxStamina}\``, inline: true },
+                    { name: '⚔️ Tấn công', value: `\`${pet.stats.atk}\``, inline: true },
+                    { name: '🛡️ Phòng thủ', value: `\`${pet.stats.def}\``, inline: true },
+                    { name: '🧠 Trí tuệ', value: `\`${pet.stats.int}\``, inline: true },
+                    { name: '💨 Tốc độ', value: `\`${pet.stats.spd}\``, inline: true },
+                    { name: '🍎 Độ đói', value: `\`${pet.status.hunger}/100\``, inline: true },
+                    { name: '📅 Ngày tạo', value: `\`${pet.createdAt.toLocaleDateString('vi-VN')}\``, inline: true }
+                );
+
+            // Handle image loading
+            let imageBuffer = null;
+            if (pet.imageData) {
+                try {
+                    imageBuffer = Buffer.from(pet.imageData, 'base64');
+                    embed.setThumbnail('attachment://pet-image.png');
+                    console.log(`[DEBUG] Loaded image from DB for pet: ${pet.name}`);
+                } catch (imageError) {
+                    console.warn(`[DEBUG] Failed to load image from DB:`, imageError);
+                }
+            }
+
+            // Regenerate image if needed
+            if (!imageBuffer && pet.imageBasePrompt) {
+                console.log(`[DEBUG] Regenerating image for pet: ${pet.name}`);
+                try {
+                    const imageResult = await this.imageService.generateImage(pet.imageBasePrompt);
+                    if (imageResult.success) {
+                        imageBuffer = imageResult.imageBuffer;
+                        embed.setThumbnail('attachment://pet-image.png');
+                        
+                        // Save new image to DB
+                        try {
+                            pet.imageData = imageBuffer.toString('base64');
+                            await pet.save();
+                            console.log(`[DEBUG] Saved new image to DB for pet: ${pet.name}`);
+                        } catch (saveError) {
+                            console.warn(`[DEBUG] Failed to save image to DB:`, saveError);
+                        }
+                    }
+                } catch (imageGenError) {
+                    console.warn(`[DEBUG] Failed to regenerate image:`, imageGenError);
+                }
+            }
+
+            // ✅ Add all skills (properly handle array)
+            if (pet.skills && pet.skills.length > 0) {
+                pet.skills.forEach((skill, index) => {
+                    embed.addFields({ 
+                        name: `💥 Kỹ năng ${index + 1}: ${skill.name}`, 
+                        value: `*${skill.description}*\n🔹 **Type**: ${skill.type} | **Cost**: ${skill.cost} MP | **Power**: ${skill.power}`
+                    });
+                });
+            } else {
+                embed.addFields({ 
+                    name: `💥 Kỹ năng`, 
+                    value: `*Chưa có kỹ năng nào*`
+                });
+            }
+            
+            // ✅ Add all traits (properly handle array)
+            if (pet.traits && pet.traits.length > 0) {
+                pet.traits.forEach((trait, index) => {
+                    embed.addFields({ 
+                        name: `💡 Nội tại ${index + 1}: ${trait.name}`, 
+                        value: `*${trait.description}*`
+                    });
+                });
+            } else {
+                embed.addFields({ 
+                    name: `💡 Nội tại`, 
+                    value: `*Chưa có nội tại nào*`
+                });
+            }
+
+            // Thêm button quay lại danh sách
+            const backButton = new ButtonBuilder()
+                .setCustomId(`back_to_pet_list_${userId}`)
+                .setLabel('⬅️ Quay lại danh sách')
+                .setStyle(ButtonStyle.Secondary);
+
+            const row = new ActionRowBuilder().addComponents(backButton);
+            
+            console.log(`[DEBUG] Sending status reply for pet: ${pet.name}`);
+            
+            await interaction.editReply({ 
+                embeds: [embed],
+                files: imageBuffer ? [{ attachment: imageBuffer, name: 'pet-image.png' }] : [],
+                components: [row]
             });
-        } catch (replyError) {
-            console.error(`[DEBUG] Failed to send error reply:`, replyError);
+            
+            console.log(`[DEBUG] Successfully sent status for pet: ${pet.name}`);
+
+        } catch (error) {
+            console.error(`[DEBUG] Error in showSinglePetStatus:`, error);
+            console.error(`[DEBUG] Error stack:`, error.stack);
+            
+            try {
+                await interaction.editReply({
+                    content: `❌ Có lỗi xảy ra khi hiển thị thông tin pet: ${error.message}`,
+                    components: []
+                });
+            } catch (replyError) {
+                console.error(`[DEBUG] Failed to send error reply:`, replyError);
+            }
         }
     }
-}
 
     /**
      * Xác nhận thả pet
      */
-    async confirmReleasePet(interaction, petId) {
+    async confirmReleasePet(interaction, petId, requestUserId) {
         try {
-            const pet = await Pet.findById(petId);
-            if (!pet || pet.ownerId !== interaction.user.id) {
-                return interaction.editReply({ 
-                    content: '❌ Không tìm thấy thú cưng này!', 
+            const userId = interaction.user.id;
+            
+            // Kiểm tra quyền truy cập - chỉ owner mới được thả
+            if (userId !== requestUserId) {
+                return interaction.reply({ 
+                    content: `❌ Chỉ <@${requestUserId}> mới có thể thả pet này!`, 
                     ephemeral: true 
+                });
+            }
+
+            await interaction.deferUpdate();
+            
+            const pet = await Pet.findById(petId);
+            if (!pet || pet.ownerId !== userId) {
+                return interaction.editReply({ 
+                    content: '❌ Không tìm thấy thú cưng này!',
+                    components: []
                 });
             }
 
@@ -655,13 +734,13 @@ async showSinglePetStatus(interaction, petId) {
                 .setColor(0xFF6B6B);
 
             const confirmButton = new ButtonBuilder()
-                .setCustomId(`confirm_release_${petId}`)
+                .setCustomId(`confirm_release_${petId}_${userId}`)
                 .setLabel('Xác Nhận Thả')
                 .setStyle(ButtonStyle.Danger)
                 .setEmoji('🕊️');
 
             const cancelButton = new ButtonBuilder()
-                .setCustomId('cancel_release')
+                .setCustomId(`cancel_release_${userId}`)
                 .setLabel('Hủy')
                 .setStyle(ButtonStyle.Secondary)
                 .setEmoji('❌');
@@ -672,48 +751,220 @@ async showSinglePetStatus(interaction, petId) {
 
         } catch (error) {
             console.error(`[PetService][ERROR] Lỗi trong confirmReleasePet:`, error);
-            await interaction.editReply("❌ Có lỗi xảy ra.");
+            await interaction.editReply({
+                content: "❌ Có lỗi xảy ra.",
+                components: []
+            });
         }
     }
 
     /**
      * Thực hiện thả pet
      */
-    async releasePet(interaction, petId) {
+    async releasePet(interaction, petId, requestUserId) {
         try {
-            const pet = await Pet.findById(petId);
-            if (!pet || pet.ownerId !== interaction.user.id) {
-                return interaction.editReply({ 
-                    content: '❌ Không tìm thấy thú cưng này!', 
+            const userId = interaction.user.id;
+            
+            // Kiểm tra quyền truy cập - chỉ owner mới được thả
+            if (userId !== requestUserId) {
+                return interaction.reply({ 
+                    content: `❌ Chỉ <@${requestUserId}> mới có thể thả pet này!`, 
                     ephemeral: true 
                 });
             }
 
+            await interaction.deferUpdate();
+
+            const pet = await Pet.findById(petId);
+            if (!pet || pet.ownerId !== userId) {
+                return interaction.editReply({ 
+                    content: '❌ Không tìm thấy thú cưng này!',
+                    components: []
+                });
+            }
+
+            const petName = pet.name;
             await Pet.findByIdAndDelete(petId);
 
             const embed = new EmbedBuilder()
-                .setTitle(`🕊️ ${pet.name} Đã Được Thả`)
-                .setDescription(`**${pet.name}** đã được thả về tự nhiên và sẽ sống hạnh phúc ở đó.\n\nCảm ơn bạn đã chăm sóc ${pet.name}! 💚`)
+                .setTitle(`🕊️ ${petName} Đã Được Thả`)
+                .setDescription(`**${petName}** đã được thả về tự nhiên và sẽ sống hạnh phúc ở đó.\n\nCảm ơn bạn đã chăm sóc ${petName}! 💚`)
                 .setColor(0x2ECC71);
 
             await interaction.editReply({ embeds: [embed], components: [] });
 
         } catch (error) {
             console.error(`[PetService][ERROR] Lỗi trong releasePet:`, error);
-            await interaction.editReply("❌ Có lỗi xảy ra khi thả pet.");
+            await interaction.editReply({
+                content: "❌ Có lỗi xảy ra khi thả pet.",
+                components: []
+            });
         }
     }
 
     /**
-     * Xử lý khi user chọn pet từ select menu
+     * Quay lại danh sách pets
      */
-    async handlePetListSelection(interaction, action, petId) {
-        if (action === 'status') {
+    async backToPetList(interaction, requestUserId) {
+        const userId = interaction.user.id;
+        
+        // Kiểm tra quyền truy cập
+        if (userId !== requestUserId) {
+            return interaction.reply({ 
+                content: `❌ Chỉ <@${requestUserId}> mới có thể xem danh sách này!`, 
+                ephemeral: true 
+            });
+        }
+
+        // Gọi lại showPetList nhưng với update thay vì reply mới
+        await this.showPetListUpdate(interaction);
+    }
+
+    /**
+     * Update pet list (dùng cho navigation buttons)
+     */
+    async showPetListUpdate(interaction) {
+        const userId = interaction.user.id;
+        console.log(`[PetService] Update danh sách pets cho User ID: ${userId}`);
+
+        try {
             await interaction.deferUpdate();
-            await this.showSinglePetStatus(interaction, petId);
-        } else if (action === 'release') {
+
+            const pets = await Pet.find({ ownerId: userId });
+            console.log(`[PetService] Tìm thấy ${pets?.length || 0} pets cho User ID: ${userId}`);
+            
+            if (!pets || pets.length === 0) {
+                return interaction.editReply({ 
+                    content: `❌ Bạn chưa có thú cưng nào. Dùng \`/pet start\` để bắt đầu!`,
+                    components: []
+                });
+            }
+
+            const embed = new EmbedBuilder()
+                .setTitle(`📋 Danh Sách Pets của ${interaction.user.displayName}`)
+                .setDescription(`Tổng cộng: **${pets.length}/${MAX_PETS_PER_USER}** pets\n\n⚠️ **Chỉ ${interaction.user.displayName} mới có thể tương tác với pets!**\n\nChọn pet bạn muốn xem chi tiết:`)
+                .setColor(0x3498DB);
+
+            // Hiển thị danh sách pets trong embed
+            pets.forEach((pet, index) => {
+                const rarityEmoji = this.getRarityEmoji(pet.rarity);
+                embed.addFields({
+                    name: `${rarityEmoji} ${pet.name} (Level ${pet.level})`,
+                    value: `${pet.rarity} - ${pet.element} - HP: ${pet.stats.hp}/${pet.stats.maxHp}`,
+                    inline: true
+                });
+            });
+
+            // Tạo buttons cho pets
+            const rows = [];
+            const petsPerRow = 3;
+            
+            for (let i = 0; i < pets.length; i += petsPerRow) {
+                const rowPets = pets.slice(i, i + petsPerRow);
+                const buttons = rowPets.map((pet, index) => {
+                    const globalIndex = i + index;
+                    return new ButtonBuilder()
+                        .setCustomId(`view_pet_${pet._id}_${userId}`)
+                        .setLabel(`${globalIndex + 1}. ${pet.name}`)
+                        .setStyle(ButtonStyle.Primary)
+                        .setEmoji(this.getRarityEmoji(pet.rarity));
+                });
+                
+                rows.push(new ActionRowBuilder().addComponents(buttons));
+                
+                if (rows.length >= 5) break;
+            }
+
+            await interaction.editReply({ 
+                embeds: [embed], 
+                components: rows 
+            });
+
+        } catch (error) {
+            console.error(`[PetService][ERROR] Lỗi trong showPetListUpdate:`, error);
+            await interaction.editReply({
+                content: "❌ Có lỗi xảy ra khi cập nhật danh sách pets.",
+                components: []
+            });
+        }
+    }
+
+    /**
+     * Hủy thả pet và quay lại menu thả pet
+     */
+    async cancelRelease(interaction, requestUserId) {
+        const userId = interaction.user.id;
+        
+        // Kiểm tra quyền truy cập
+        if (userId !== requestUserId) {
+            return interaction.reply({ 
+                content: `❌ Bạn không có quyền thực hiện action này!`, 
+                ephemeral: true 
+            });
+        }
+
+        // Quay lại menu thả pet
+        await this.showReleasePetMenuUpdate(interaction);
+    }
+
+    /**
+     * Update release pet menu (dùng cho navigation buttons)
+     */
+    async showReleasePetMenuUpdate(interaction) {
+        const userId = interaction.user.id;
+        console.log(`[PetService] Update menu thả pet cho User ID: ${userId}`);
+
+        try {
             await interaction.deferUpdate();
-            await this.confirmReleasePet(interaction, petId);
+
+            const pets = await Pet.find({ ownerId: userId });
+            if (!pets || pets.length === 0) {
+                return interaction.editReply({ 
+                    content: `❌ Bạn chưa có thú cưng nào để thả.`,
+                    components: []
+                });
+            }
+
+            const embed = new EmbedBuilder()
+                .setTitle(`🕊️ Chọn Pet Để Thả`)
+                .setDescription(`Chọn pet bạn muốn thả về tự nhiên. **Hành động này không thể hoàn tác!**`)
+                .setColor(0xFF6B6B);
+
+            pets.forEach((pet, index) => {
+                const rarityEmoji = this.getRarityEmoji(pet.rarity);
+                embed.addFields({
+                    name: `${rarityEmoji} ${pet.name} (Level ${pet.level})`,
+                    value: `${pet.rarity} - ${pet.element}`,
+                    inline: true
+                });
+            });
+
+            const rows = [];
+            const petsPerRow = 3;
+            
+            for (let i = 0; i < pets.length; i += petsPerRow) {
+                const rowPets = pets.slice(i, i + petsPerRow);
+                const buttons = rowPets.map((pet, index) => {
+                    const globalIndex = i + index;
+                    return new ButtonBuilder()
+                        .setCustomId(`release_pet_${pet._id}_${userId}`)
+                        .setLabel(`${globalIndex + 1}. Thả ${pet.name}`)
+                        .setStyle(ButtonStyle.Danger)
+                        .setEmoji('🕊️');
+                });
+                
+                rows.push(new ActionRowBuilder().addComponents(buttons));
+                if (rows.length >= 5) break;
+            }
+
+            await interaction.editReply({ embeds: [embed], components: rows });
+
+        } catch (error) {
+            console.error(`[PetService][ERROR] Lỗi trong showReleasePetMenuUpdate:`, error);
+            await interaction.editReply({
+                content: "❌ Có lỗi xảy ra khi cập nhật menu thả pet.",
+                components: []
+            });
         }
     }
 
@@ -729,6 +980,30 @@ async showSinglePetStatus(interaction, petId) {
             'Legend': '🔴'
         };
         return emojiMap[rarity] || '⚪';
+    }
+
+    /**
+     * Cleanup expired sessions (gọi định kỳ)
+     */
+    cleanupExpiredSessions() {
+        const now = new Date();
+        const expiredSessions = [];
+        
+        for (const [userId, session] of this.activeEggSessions.entries()) {
+            const sessionAge = now - session.timestamp;
+            if (sessionAge > 5 * 60 * 1000) { // 5 phút
+                expiredSessions.push(userId);
+            }
+        }
+        
+        expiredSessions.forEach(userId => {
+            this.activeEggSessions.delete(userId);
+            console.log(`[PetService] Cleaned up expired egg session for User ID: ${userId}`);
+        });
+        
+        if (expiredSessions.length > 0) {
+            console.log(`[PetService] Cleaned up ${expiredSessions.length} expired egg sessions`);
+        }
     }
 }
 
