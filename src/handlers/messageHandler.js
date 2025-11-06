@@ -145,7 +145,8 @@ module.exports = async (message) => {
             }
             
             // Xử lý tin nhắn thường
-            const response = await GptChatService.generateResponse(message);
+            const userId = message.author.id; // 👈 Lấy ID người dùng
+            const response = await GptChatService.generateResponse(message,userId);
             return await sendLongMessage(
                 message.reply.bind(message),
                 response,

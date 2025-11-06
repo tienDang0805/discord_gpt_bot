@@ -14,6 +14,10 @@ const DEFAULT_CONFIG = {
   personality: "chill guy hẹ hẹ",
   writing_style: "Dùng giọng văn thân thiện, có phần 'mất dạy', hài hước và hay dùng 'meme'. Tránh dùng từ ngữ quá trang trọng, học thuật.",
 };
+const USER_MAPPING = {
+    '448507913879945216': 'Phì Đế , hay còn gọi là anh Tiến Đặng người tạo ra mày',
+    '1376071689124839526': 'Huy Đoàn',
+};
 const safetySettings = [
   {
     category: "HARM_CATEGORY_HARASSMENT",
@@ -251,7 +255,11 @@ async resetBotConfig() {
 
   return this.cachedConfig; 
 }
-  _buildSystemPrompt(config) {
+_getSenderName(userId) {
+    // Trả về tên gọi tùy chỉnh, hoặc "một người dùng" nếu không có trong danh sách
+    return USER_MAPPING[userId] || 'một người dùng ẩn danh';
+}
+_buildSystemPrompt(config, senderName) {
     // Các quy tắc bất biến
     // Ghép các mảnh lại thành một prompt hoàn chỉnh
     const finalPrompt = `
@@ -274,34 +282,34 @@ ${config.personality}
 **Giọng văn của mày:**
 ${config.writing_style}
 
+# THÔNG TIN NGƯỜI GỬI HIỆN TẠI
+
+**Người đang trò chuyện với mày:**
+Người dùng hiện tại được nhận dạng là **${senderName}**.
+Hãy sử dụng thông tin này để điều chỉnh giọng điệu, mức độ tôn trọng, hoặc cách xưng hô của mày sao cho phù hợp nhất.
+
 # CÁC QUY TẮC BẤT BIẾN
 ${process.env.CORE_RULES}
-# GIỚI THIỆU NGƯỜI TẠO RA MÀY 
+
+# GIỚI THIỆU VỀ SYSTEM PROMPT
 ${process.env.SYSTEM_PROMPT}
-
-
-
-# THÔNG TIN CHỨC NĂNG
-- Phân tích hình ảnh, audio, video.
-- Gen ảnh: /genimage [prompt]
-- Chuyển văn bản thành giọng nói và kể chuyện trong voice channel: !audio [prompt]
-- Thời tiết: /thoitiet
-- Tìm kiếm real-time: /tool [prompt]
 `;
     return finalPrompt;
-  }
+}
   /**
    * Tạo phản hồi từ tin nhắn
    */
-  async generateResponse(message) {
+  async generateResponse(message,userId) {
+    console.log("userId",userId)
     try {
        // 1. Lấy cấu hình tùy chỉnh
        const config = await this.getBotConfig();
-      console.log("config",config)
+      // console.log("config",config)
        // 2. Xây dựng prompt động
-       const systemInstruction = this._buildSystemPrompt(config);
-       console.log("systemInstruction",systemInstruction)
-       console.log ("SYSTEM_PROMPT",SYSTEM_PROMPT)
+      const senderName = this._getSenderName(userId); // Giả định bạn đã có _getSenderName
+      console.log("senderName", senderName);
+      const systemInstruction = this._buildSystemPrompt(config, senderName);     
+       //  console.log("systemInstruction",systemInstruction)
       //  this.model = this.genAI.getGenerativeModel({ 
       //   model: GEMINI_CONFIG.model,
       //   generationConfig: GEMINI_CONFIG.generationConfig,
