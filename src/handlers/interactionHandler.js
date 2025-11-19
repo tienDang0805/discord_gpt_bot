@@ -5,6 +5,8 @@ const { sendLongMessage } = require('../utils/messageHelper');
 const TextToAudioService = require('../services/textToAudioService');
 const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle, InteractionType } = require('discord.js');
 const PetService = require('../services/pet/PetService');
+const UserIdentityService = require('../services/UserIdentityService');
+
 
 module.exports = async (interaction) => {
     if (!interaction.isChatInputCommand() && !interaction.isButton() && !interaction.isModalSubmit() && !interaction.isStringSelectMenu()) return;
@@ -90,6 +92,8 @@ async function handleSlashCommands(interaction, services) {
         
         case 'catchtheword':
             return await handleCatchTheWordSetupCommand(interaction, catchTheWordService);
+        case 'identity':
+            return await handleIdentityCommands(interaction);
         
         // Music commands
         case 'play':
@@ -156,6 +160,25 @@ async function handlePetCommands(interaction, petService) {
     }
 }
 
+async function handleIdentityCommands(interaction) {
+    const subcommand = interaction.options.getSubcommand();
+    
+    if (subcommand === 'setup') {
+        await interaction.deferReply({ ephemeral: true });
+        const menuData = await UserIdentityService.showIdentityMenu(interaction);
+        await interaction.editReply(menuData);
+    } 
+    else if (subcommand === 'view') {
+        await interaction.deferReply({ ephemeral: true });
+        const targetUser = interaction.options.getUser('user');
+        const result = await UserIdentityService.viewOtherUserIdentity(interaction, targetUser.id);
+        await interaction.editReply(result);
+    }
+    else if (subcommand === 'reset') {
+        await interaction.deferReply({ ephemeral: true });
+        await UserIdentityService.handleReset(interaction);
+    }
+}
 
 // ===== OTHER COMMAND HANDLERS =====
 async function handleWeatherCommand(interaction) {
@@ -525,7 +548,9 @@ async function handleMusicCommands(interaction) {
 // ===== MODAL SUBMIT HANDLERS =====
 async function handleModalSubmits(interaction, services) {
     const { quizService, catchTheWordService } = services;
-
+    if (interaction.customId === 'identity_edit_modal') {
+        return await handleIdentityModalSubmit(interaction);
+    }
     if (interaction.customId === 'personality_modal_v2') {
         return await handlePersonalityModalSubmit(interaction);
     } else if (interaction.customId === 'quiz_setup_modal') {
@@ -587,7 +612,41 @@ async function handlePersonalityModalSubmit(interaction) {
         });
     }
 }
+async function handleIdentityModalSubmit(interaction) {
+    try {
+        await interaction.deferReply({ ephemeral: true });
 
+        const nickname = interaction.fields.getTextInputValue('nickname_input').trim();
+        const signature = interaction.fields.getTextInputValue('signature_input').trim();
+
+        const updates = {
+            nickname: nickname || null,
+            signature: signature || null
+        };
+
+        await UserIdentityService.updateIdentity(interaction.user.id, updates);
+
+        const embed = new EmbedBuilder()
+            .setColor(0x57F287)
+            .setTitle('✅ Đã cập nhật danh tính!')
+            .setDescription('AI sẽ nhớ bạn theo thông tin mới.')
+            .setTimestamp();
+
+        await interaction.editReply({ embeds: [embed] });
+
+        setTimeout(async () => {
+            const menuData = await UserIdentityService.showIdentityMenu(interaction);
+            await interaction.editReply(menuData);
+        }, 2000);
+
+    } catch (error) {
+        console.error('[Identity] Error in modal submit:', error);
+        await interaction.editReply({
+            content: '❌ Có lỗi xảy ra.',
+            ephemeral: true
+        });
+    }
+}
 async function handleQuizSetupModalSubmit(interaction, quizService) {
     await interaction.deferReply();
     
@@ -660,10 +719,53 @@ async function handleCatchTheWordModalSubmit(interaction, catchTheWordService) {
 }
 
 // ===== BUTTON INTERACTION HANDLERS =====
+async function handleIdentityButtons(interaction) {
+    if (interaction.customId === 'edit_identity') {
+        const identity = await UserIdentityService.getOrCreateIdentity(interaction.user.id);
+        
+        const modal = new ModalBuilder()
+            .setCustomId('identity_edit_modal')
+            .setTitle('✏️ Chỉnh Sửa Danh Tính');
+
+        const nicknameInput = new TextInputBuilder()
+            .setCustomId('nickname_input')
+            .setLabel('Biệt danh của bạn (tối đa 50 ký tự)')
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('Ví dụ: Đại Ca, Boss, Senpai...')
+            .setValue(identity.nickname || '')
+            .setMaxLength(50)
+            .setRequired(false);
+
+        const signatureInput = new TextInputBuilder()
+            .setCustomId('signature_input')
+            .setLabel('Mô tả signature (tối đa 200 ký tự)')
+            .setStyle(TextInputStyle.Paragraph)
+            .setPlaceholder('Ví dụ: Lập trình viên đam mê AI, thích meme và game')
+            .setValue(identity.signature || '')
+            .setMaxLength(2000)
+            .setRequired(false);
+
+        modal.addComponents(
+            new ActionRowBuilder().addComponents(nicknameInput),
+            new ActionRowBuilder().addComponents(signatureInput)
+        );
+
+        await interaction.showModal(modal);
+        return;
+    }
+
+    if (interaction.customId === 'reset_identity') {
+        await UserIdentityService.handleReset(interaction);
+        return;
+    }
+}
 async function handleButtonInteractions(interaction, services) {
     const { quizService, catchTheWordService, petService } = services;
 
     // Quiz answer buttons
+    if (interaction.customId === 'edit_identity' || interaction.customId === 'reset_identity') {
+        return await handleIdentityButtons(interaction);
+    }
     if (interaction.customId.startsWith('quiz_answer_')) {
         await interaction.deferUpdate();
         const guildId = interaction.guild.id;

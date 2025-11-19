@@ -251,6 +251,32 @@ module.exports = [
           subcommand
               .setName('release')
               .setDescription('Thả thú cưng về tự nhiên')),
+    },
+    {
+        data: new SlashCommandBuilder()
+        .setName('identity')
+        .setDescription('Quản lý danh tính cá nhân của bạn')
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('setup')
+                .setDescription('Thiết lập hoặc xem danh tính của bạn')
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('view')
+                .setDescription('Xem danh tính của người khác')
+                .addUserOption(option =>
+                    option
+                        .setName('user')
+                        .setDescription('Người dùng bạn muốn xem danh tính')
+                        .setRequired(true)
+                )
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('reset')
+                .setDescription('Reset danh tính về mặc định')
+        ),
     }
    
 ];

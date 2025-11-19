@@ -7,6 +7,8 @@ const path = require('path');
 const wav = require('wav');
 const {GoogleGenAI} = require("@google/genai") ;
 const { cleanContent } = require('discord.js');
+const UserIdentityService = require('./UserIdentityService');
+
 const DEFAULT_CONFIG = {
   identity: "ChatDVT.",
   purpose: "Sứ mệnh của Mày là giúp đỡ, giải đáp thắc mắc và trò chuyện vui vẻ cùng mọi người.",
@@ -16,7 +18,6 @@ const DEFAULT_CONFIG = {
 };
 const USER_MAPPING = {
     '448507913879945216': 'Phì Đế , hay còn gọi là anh Tiến Đặng người tạo ra mày',
-    '1376071689124839526': 'Huy Đoàn',
 };
 const safetySettings = [
   {
@@ -37,7 +38,7 @@ const safetySettings = [
   }
 ];
 const CHAT_MODEL = {
-  model: "gemini-2.5-flash",
+  model: "gemini-3-pro-preview",
   generationConfig: {
     temperature: 0.9,
     topK: 1,
@@ -255,13 +256,55 @@ async resetBotConfig() {
 
   return this.cachedConfig; 
 }
-_getSenderName(userId) {
-    // Trả về tên gọi tùy chỉnh, hoặc "một người dùng" nếu không có trong danh sách
-    return USER_MAPPING[userId] || 'một người dùng ẩn danh';
+async _getSenderName(userId) {
+    try {
+        const identity = await UserIdentityService.getIdentityForPrompt(userId);
+        
+        // Ưu tiên nickname, nếu không có thì dùng "một người dùng"
+        return identity.nickname || `một người dùng (ID: ${userId})`;
+    } catch (error) {
+        console.error('[GptChat] Error getting sender name:', error);
+        return `một người dùng (ID: ${userId})`;
+    }
 }
-_buildSystemPrompt(config, senderName) {
-    // Các quy tắc bất biến
-    // Ghép các mảnh lại thành một prompt hoàn chỉnh
+
+async _buildSystemPrompt(config, senderName, userId) {
+    // Lấy identity của user
+    let userIdentityInfo = '';
+    try {
+        const userIdentity = await UserIdentityService.getIdentityForPrompt(userId);
+        
+        if (userIdentity.nickname || userIdentity.signature) {
+            userIdentityInfo = `
+
+# THÔNG TIN CÁ NHÂN CỦA NGƯỜI DÙNG
+
+**Người đang trò chuyện với mày:**
+${userIdentity.nickname ? `**Biệt danh:** ${userIdentity.nickname}` : ''}
+${userIdentity.signature ? `**Signature:** ${userIdentity.signature}` : ''}
+
+**Hướng dẫn:**
+- Hãy xưng hô và giao tiếp phù hợp với biệt danh và mô tả của họ.
+- Nếu họ có signature thú vị, hãy nhớ và tương tác theo cá tính đó.
+`;
+        } else {
+            userIdentityInfo = `
+
+# THÔNG TIN NGƯỜI GỬI HIỆN TẠI
+
+**Người đang trò chuyện với mày:**
+`;
+        }
+    } catch (error) {
+        console.error('[GptChat] Error loading user identity:', error);
+        userIdentityInfo = `
+
+# THÔNG TIN NGƯỜI GỬI HIỆN TẠI
+
+**Người đang trò chuyện với mày:**
+`;
+    }
+
     const finalPrompt = `
 # GIỚI THIỆU VỀ MÀY
 
@@ -282,11 +325,7 @@ ${config.personality}
 **Giọng văn của mày:**
 ${config.writing_style}
 
-# THÔNG TIN NGƯỜI GỬI HIỆN TẠI
-
-**Người đang trò chuyện với mày:**
-Người dùng hiện tại được nhận dạng là **${senderName}**.
-Hãy sử dụng thông tin này để điều chỉnh giọng điệu, mức độ tôn trọng, hoặc cách xưng hô của mày sao cho phù hợp nhất.
+${userIdentityInfo}
 
 # CÁC QUY TẮC BẤT BIẾN
 ${process.env.CORE_RULES}
@@ -299,51 +338,41 @@ ${process.env.SYSTEM_PROMPT}
   /**
    * Tạo phản hồi từ tin nhắn
    */
-  async generateResponse(message,userId) {
-    console.log("userId",userId)
+ async generateResponse(message, userId) {
+    console.log("userId", userId);
     try {
-       // 1. Lấy cấu hình tùy chỉnh
-       const config = await this.getBotConfig();
-      // console.log("config",config)
-       // 2. Xây dựng prompt động
-      const senderName = this._getSenderName(userId); // Giả định bạn đã có _getSenderName
-      console.log("senderName", senderName);
-      const systemInstruction = this._buildSystemPrompt(config, senderName);     
-       //  console.log("systemInstruction",systemInstruction)
-      //  this.model = this.genAI.getGenerativeModel({ 
-      //   model: GEMINI_CONFIG.model,
-      //   generationConfig: GEMINI_CONFIG.generationConfig,
-      //   safetySettings: safetySettings ,
-      //   systemInstruction: systemInstruction,
-      // });
-      await this.loadChatHistory();
-      const cleanedContent = message.content.replace(/<@!?\d+>/g, '').trim();
-      const payload = {
-        contents: [
-          ...this.chatHistory,
-          { role: "user", parts: [{ text: cleanedContent }] }
-        ],
-        systemInstruction: {
-          parts: [{ text: systemInstruction }]
-        }
-      };
+        const config = await this.getBotConfig();
+        const senderName = this._getSenderName(userId);
+        
+        // Pass userId để load identity
+        const systemInstruction = await this._buildSystemPrompt(config, senderName, userId);
+        
+        await this.loadChatHistory();
+        const cleanedContent = message.content.replace(/<@!?\d+>/g, '').trim();
+        console.log("systemInstruction",systemInstruction)
+        const payload = {
+            contents: [
+                ...this.chatHistory,
+                { role: "user", parts: [{ text: cleanedContent }] }
+            ],
+            systemInstruction: {
+                parts: [{ text: systemInstruction }]
+            }
+        };
 
-      const result = await this.model.generateContent(payload);
-      const response = await result.response;
-      const text = response.text();
-      
-      // FIX 1: Sử dụng hàm cleanContent của discord.js để xử lý markdown an toàn
-      const safeMessage = cleanContent(text, message.channel);
-      
-      // FIX 2: Lưu bản gốc vào history, chỉ format khi gửi đi
-      await this.saveNewMessagesOnly(cleanedContent, text);
-      
-      return safeMessage;
+        const result = await this.model.generateContent(payload);
+        const response = await result.response;
+        const text = response.text();
+        
+        const safeMessage = cleanContent(text, message.channel);
+        await this.saveNewMessagesOnly(cleanedContent, text);
+        
+        return safeMessage;
     } catch (error) {
-      await this.logError(error);
-      throw error;
+        await this.logError(error);
+        throw error;
     }
-  }
+}
   async generatePKResponse(prompt) {
     try {
       // Clone model để không bị ảnh hưởng bởi chat history của hàm khác
@@ -643,6 +672,7 @@ isMessageDuplicate(userMsg, modelMsg) {
             
        // 2. Xây dựng prompt động
        const systemInstruction = this._buildSystemPrompt(config);
+       console.log("systemInstruction",systemInstruction)
       const searchModel = this.genAI.getGenerativeModel({
         model: GEMINI_CONFIG.model,
         tools: [{ googleSearch: {} }],
