@@ -66,6 +66,43 @@ module.exports = async (message) => {
         lowerCaseContent.includes('phepmau')) { 
         return message.reply('có cái lồn phép màu làm đi thằng mọi');
     }
+    if (message.content.startsWith('!sum')) {
+    const userId = message.author.id; 
+    const loadingMsg = await message.reply("⏳ Đang lội page hóng chuyện, đợi tí...");
+
+        try {
+            const args = message.content.split(' ');
+            let limit = parseInt(args[1]) || 50;
+            if (limit > 100) limit = 100; // Cap lại tránh tốn token
+
+            const fetchedMessages = await message.channel.messages.fetch({ limit: limit });
+
+            const transcript = Array.from(fetchedMessages.values())
+                .reverse() 
+                .filter(m => !m.author.bot && !m.content.startsWith('!')) 
+                .map(m => `${m.author.username}: ${m.content || "[Media]"}`)
+                .join('\n');
+
+            if (!transcript.trim()) {
+                await loadingMsg.delete();
+                return message.reply("❌ Không có gì để tóm tắt cả.");
+            }
+
+            const summaryResponse = await GptChatService.generateSummary(transcript, userId);
+
+            await loadingMsg.delete();
+            return await sendLongMessage(
+                message.reply.bind(message),
+                summaryResponse, 
+                { allowedMentions: { repliedUser: false } }
+            );
+
+        } catch (error) {
+            console.error("Lỗi Summary:", error);
+            await loadingMsg.edit("❌ Bot bị lỗi khi đọc tin nhắn.");
+            return;
+        }
+    }
     if (message.content.startsWith('!audio')) {
         try {
             const text = message.content.replace(/^!audio\s*/i, '').trim();

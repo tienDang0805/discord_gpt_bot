@@ -60,7 +60,7 @@ class GptChatService {
       systemInstruction: SYSTEM_PROMPT,
     });
     this.imageModel = this.genAI.getGenerativeModel({ 
-      model: "gemini-2.0-flash-exp-image-generation",
+      model: "imagen-4.0-fast-generate-001",
       generationConfig: GEMINI_CONFIG.generationConfig,
       safetySettings: safetySettings,
       systemInstruction: SYSTEM_PROMPT,
@@ -344,7 +344,6 @@ ${process.env.SYSTEM_PROMPT}
         const config = await this.getBotConfig();
         const senderName = this._getSenderName(userId);
         
-        // Pass userId để load identity
         const systemInstruction = await this._buildSystemPrompt(config, senderName, userId);
         
         await this.loadChatHistory();
@@ -372,6 +371,28 @@ ${process.env.SYSTEM_PROMPT}
         await this.logError(error);
         throw error;
     }
+}
+// Trong file GptChatService.js
+async generateSummary(transcript, userId) {
+    // 1. Lấy config/persona (giữ giọng điệu bot)
+    const config = await this.getBotConfig();
+    const senderName = this._getSenderName(userId);
+    const basePersona = await this._buildSystemPrompt(config, senderName, userId);
+
+    // 2. Prompt chuyên dụng cho task tóm tắt
+    const summaryPrompt = `
+    ${basePersona}
+    --- NHIỆM VỤ ---
+    Mày KHÔNG chat với user. Mày đang đọc log chat.
+    Hãy tóm tắt đoạn hội thoại dưới đây theo phong cách của mày.
+    Nội dung log:
+    ${transcript}
+    `;
+
+    // 3. Gọi model (Lưu ý: Không dùng chatHistory cũ, tạo session mới hoặc request đơn lẻ)
+    const result = await this.model.generateContent(summaryPrompt);
+    const response = await result.response;
+    return response.text();
 }
   async generatePKResponse(prompt) {
     try {
