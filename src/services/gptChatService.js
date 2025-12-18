@@ -38,7 +38,7 @@ const safetySettings = [
   }
 ];
 const CHAT_MODEL = {
-  model: "gemini-2.5-flash",
+  model: "gemini-3-flash-preview",
   generationConfig: {
     temperature: 0.9,
     topK: 1,

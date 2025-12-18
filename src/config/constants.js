@@ -12,7 +12,7 @@ module.exports = {
   GUILD_ID: process.env.GUILD_ID,
   SYSTEM_PROMPT,
   GEMINI_CONFIG: {
-    model: "gemini-2.5-flash",
+    model: "gemini-3-flash-preview",
     generationConfig: {
       temperature: 2,
       topP: 0.95,
