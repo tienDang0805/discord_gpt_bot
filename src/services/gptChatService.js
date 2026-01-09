@@ -930,41 +930,43 @@ isMessageDuplicate(userMsg, modelMsg) {
     }
 }
 
-async generateCatchTheWordRounds(numRounds, difficulty) {
+async generateCatchTheWordRounds(numRounds, difficulty, topic) {
+  const cleanTopic = topic ? topic : "Tổng hợp (Ngẫu nhiên)";
+
   const prompt = `
-Bạn là một người quản trò game "Đuổi Hình Bắt Chữ" của Việt Nam, cực kỳ thông minh, hài hước và sáng tạo.
-Nhiệm vụ của bạn là tạo ra chính xác ${numRounds} câu đố ở độ khó "${difficulty}".
+Bạn là một người quản trò game "Nhìn Hình Đoán Chữ" cực kỳ thông minh.
+Nhiệm vụ của bạn là tạo ra chính xác ${numRounds} câu đố thuộc chủ đề "${cleanTopic}" ở độ khó "${difficulty}".
 
-**QUY TẮC BẮT BUỘC:**
+**QUY TẮC 1: BÁM SÁT CHỦ ĐỀ**
+* Tất cả các \`correctAnswer\` PHẢI liên quan đến chủ đề: "${cleanTopic}".
 
-1.  **ĐA DẠNG HÓA ĐÁP ÁN:** Không chỉ giới hạn ở thành ngữ, tục ngữ. Hãy tạo câu đố về:
-    * Tên một bộ phim, bài hát, nhân vật nổi tiếng.
-    * Một đồ vật, con vật, địa danh.
-    * Một hành động hoặc một khái niệm trừu tượng.
-    * Thành ngữ, tục ngữ, ca dao, từ láy...
+**QUY TẮC 2: CÁCH THỨC GỢI Ý (MINH HỌA TRỰC TIẾP)**
+* **TUYỆT ĐỐI KHÔNG** dùng lối chơi chữ "Đuổi hình bắt chữ" (không ghép các vật không liên quan để ra âm tiết).
+* **Mô tả trực tiếp:** Hình ảnh phải minh họa chính xác nghĩa của từ đáp án.
+* Nếu đáp án là danh từ (ví dụ "Con Mèo") -> Vẽ con mèo.
+* Nếu đáp án là động từ/tính từ (ví dụ "Chạy bộ", "Hạnh phúc") -> Vẽ cảnh người đang chạy bộ hoặc gia đình đang cười.
 
-2.  **ĐỊNH NGHĨA ĐỘ KHÓ ("${difficulty}"):**
-    * **Dễ:** Gợi ý hình ảnh rất trực quan, gần như mô tả thẳng đáp án. Các đáp án gây nhiễu rõ ràng là sai.
-        * Ví dụ đáp án "Cá sấu": \`imagePrompt\` có thể là "A green crocodile with many teeth".
-    * **Trung bình:** Hình ảnh cần một chút suy luận hoặc ghép chữ. Các đáp án gây nhiễu có thể liên quan đến một phần của hình ảnh.
-        * Ví dụ đáp án "Đầu voi đuôi chuột": \`imagePrompt\` là "A giant elephant head seamlessly transitioning into a tiny mouse tail".
-    * **Khó:** Hình ảnh mang tính ẩn dụ, trừu tượng hoặc chơi chữ. Đáp án gây nhiễu rất hợp lý và có liên quan về mặt logic hoặc hình ảnh.
-        * Ví dụ đáp án "Buôn dưa lê": \`imagePrompt\` là "In a bustling vietnamese market, a group of women are gathered around a street vendor selling melons and pears, they are talking and gossiping animatedly".
-    * **Địa ngục:** Hình ảnh cực kỳ trừu tượng, đòi hỏi kiến thức sâu rộng hoặc suy luận nhiều tầng. Gợi ý có thể là một phép ẩn dụ cho một phép ẩn dụ khác. Đáp án gây nhiễu cực kỳ tinh vi.
-        * Ví dụ đáp án "Mã đáo thành công": \`imagePrompt\` là "An epic painting of a single majestic horse returning to a citadel at sunset, looking victorious".
+**QUY TẮC 3: ĐỊNH NGHĨA ĐỘ KHÓ ("${difficulty}"):**
+* **Dễ:** Hình ảnh cận cảnh, rõ ràng, đặc trưng nhất của sự vật.
+    * VD: Đáp án "Quả Táo" -> Prompt: "A close-up of a fresh red apple".
+* **Trung bình:** Hình ảnh đặt trong bối cảnh hoặc nhìn từ góc độ nghệ thuật hơn.
+    * VD: Đáp án "Quả Táo" -> Prompt: "An apple tree in a garden with sunlight filtering through leaves".
+* **Khó:** Hình ảnh trừu tượng, mô tả khái niệm hoặc chỉ hiển thị một chi tiết nhỏ đặc trưng (Macro shot).
+    * VD: Đáp án "Quả Táo" -> Prompt: "A close-up texture of apple skin with water droplets".
+* **Địa ngục:** Hình ảnh siêu thực hoặc biểu tượng hóa cao độ.
 
-3.  **TRƯỜNG DỮ LIỆU JSON:** Mỗi câu đố phải là một JSON object với các trường sau:
-    * \`"correctAnswer"\` (string): Đáp án đúng bằng tiếng Việt.
-    * \`"imagePrompt"\` (string): Mô tả hình ảnh **BẰNG TIẾNG ANH** để AI vẽ. **QUAN TRỌNG:** Mô tả cảnh một cách thuần túy, không chứa chữ, không gợi ý lộ liễu.
-    * \`"options"\` (array): Một mảng gồm chính xác 4 chuỗi tiếng Việt. Một trong số đó là \`correctAnswer\`. Ba cái còn lại là đáp án sai nhưng phải **thật sự hợp lý, thông minh, và gây nhiễu tốt** dựa trên độ khó đã chọn.
-    * \`"correctAnswerIndex"\` (number): Chỉ số (từ 0 đến 3) của đáp án đúng trong mảng \`options\`.
+**QUY TẮC 4: CẤU TRÚC JSON ĐẦU RA**
+Mỗi câu đố là một Object với:
+* \`"correctAnswer"\` (string): Đáp án tiếng Việt.
+* \`"imagePrompt"\` (string): Mô tả hình ảnh BẰNG TIẾNG ANH để AI vẽ.
+* \`"options"\` (array): Mảng 4 chuỗi tiếng Việt. 1 đúng, 3 sai. Các đáp án sai phải cùng loại (ví dụ cùng là tên loại quả) để gây nhiễu.
+* \`"correctAnswerIndex"\` (number): 0-3.
 
 **YÊU CẦU ĐẦU RA:**
-CHỈ TRẢ VỀ MỘT MẢNG JSON HỢP LỆ. KHÔNG BAO GỒM BẤT KỲ GIẢI THÍCH, MARKDOWN HAY VĂN BẢN NÀO KHÁC.
+CHỈ TRẢ VỀ MỘT MẢNG JSON HỢP LỆ (JSON ARRAY). KHÔNG MARKDOWN, KHÔNG GIẢI THÍCH.
   `;
 
   try {
-    // Giả sử bạn có một model đã khởi tạo là this.model
     const result = await this.model.generateContent({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
@@ -989,12 +991,19 @@ CHỈ TRẢ VỀ MỘT MẢNG JSON HỢP LỆ. KHÔNG BAO GỒM BẤT KỲ GIẢ
     });
 
     const response = await result.response;
-    const jsonString = response.text();
+    let jsonString = response.text();
+    
+    if (jsonString.startsWith('```json')) {
+        jsonString = jsonString.replace(/^```json\n/, '').replace(/\n```$/, '');
+    } else if (jsonString.startsWith('```')) {
+        jsonString = jsonString.replace(/^```\n/, '').replace(/\n```$/, '');
+    }
+
     const parsedJson = JSON.parse(jsonString);
     return parsedJson;
 
   } catch (error) {
-    console.error("Lỗi khi tạo câu đố Đuổi Hình Bắt Chữ:", error);
+    console.error("Lỗi khi tạo câu đố:", error);
     return []; 
   }
 }

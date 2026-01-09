@@ -13,7 +13,7 @@ class CatchTheWordService {
         return this.activeGames.has(guildId);
     }
 
-    async startGame(guildId, channelId, creatorId, numRounds, timeLimitSeconds, difficulty) {
+    async startGame(guildId, channelId, creatorId, numRounds, timeLimitSeconds, difficulty, topic) {
         if (this.isGameActive(guildId)) {
             return { success: false, message: '❌ Đã có một game đang diễn ra rồi.' };
         }
@@ -38,7 +38,7 @@ class CatchTheWordService {
         const gameState = this.activeGames.get(guildId);
 
         try {
-            const roundsData = await GptChatService.generateCatchTheWordRounds(numRounds, gameState.difficulty);
+            const roundsData = await GptChatService.generateCatchTheWordRounds(numRounds, gameState.difficulty,topic);
             if (!roundsData || roundsData.length === 0) {
                 this.activeGames.delete(guildId);
                 return { success: false, message: '❌ Bot không thể nghĩ ra câu đố nào với độ khó này. Vui lòng thử lại!' };
@@ -49,7 +49,7 @@ class CatchTheWordService {
 
             return { 
                 success: true, 
-                message: `🎉 **Game Đuổi Hình Bắt Chữ** với **${numRounds}** vòng (Độ khó: **${gameState.difficulty}**) đã bắt đầu! Mỗi vòng có **${timeLimitSeconds} giây** để trả lời.` 
+                message: `🎉 **Game Đuổi Hình Bắt Chữ** với Chủ đề **${topic}** Số vòng **${numRounds}** vòng (Độ khó: **${gameState.difficulty}**) đã bắt đầu! Mỗi vòng có **${timeLimitSeconds} giây** để trả lời.` 
             };
         } catch (error) {
             console.error('Lỗi khi bắt đầu game:', error);

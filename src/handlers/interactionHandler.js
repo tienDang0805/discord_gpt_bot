@@ -415,7 +415,12 @@ async function handleCatchTheWordSetupCommand(interaction, catchTheWordService) 
     const modal = new ModalBuilder()
         .setCustomId('ctw_setup_modal')
         .setTitle('Cài Đặt Game Đuổi Hình Bắt Chữ');
-
+    const topicInput = new TextInputBuilder()
+        .setCustomId('ctw_topic_input')
+        .setLabel('Chủ đề ')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder('Ví dụ : Thành ngữ tục ngữ')
+        .setRequired(true);
     const numRoundsInput = new TextInputBuilder()
         .setCustomId('num_rounds_input')
         .setLabel('Số lượng vòng (tối đa 5 vòng)')
@@ -436,11 +441,13 @@ async function handleCatchTheWordSetupCommand(interaction, catchTheWordService) 
         .setStyle(TextInputStyle.Short)
         .setPlaceholder('Mặc định: Trung bình')
         .setRequired(false);
+    
 
     modal.addComponents(
         new ActionRowBuilder().addComponents(numRoundsInput),
+        new ActionRowBuilder().addComponents(topicInput),
         new ActionRowBuilder().addComponents(timeLimitInput),
-        new ActionRowBuilder().addComponents(difficultyInput)
+        new ActionRowBuilder().addComponents(difficultyInput),
     );
 
     await interaction.showModal(modal);
@@ -692,7 +699,7 @@ async function handleCatchTheWordModalSubmit(interaction, catchTheWordService) {
     const timeLimit = timeLimitInput ? parseInt(timeLimitInput) : 20;
     const difficultyInput = interaction.fields.getTextInputValue('difficulty_input');
     const difficulty = difficultyInput?.trim() || 'Trung bình';
-
+    const ctwTopic = interaction.fields.getTextInputValue('ctw_topic_input').trim()
     // Validation
     if (isNaN(numRounds) || numRounds < 1 || numRounds > 5) {
         return await interaction.editReply('❌ Số vòng phải là một số từ 1 đến 5.');
@@ -705,6 +712,9 @@ async function handleCatchTheWordModalSubmit(interaction, catchTheWordService) {
     if (!validDifficulties.includes(difficulty)) {
         return await interaction.editReply('❌ Độ khó không hợp lệ. Vui lòng chọn: Dễ, Trung bình, Khó, hoặc Địa ngục.');
     }
+    if(ctwTopic == ""){
+        return await interaction.editReply('❌ Chủ đề không được để trống');
+    }
 
     const result = await catchTheWordService.startGame(
         interaction.guild.id,
@@ -712,7 +722,8 @@ async function handleCatchTheWordModalSubmit(interaction, catchTheWordService) {
         interaction.user.id,
         numRounds,
         timeLimit,
-        difficulty
+        difficulty,
+        ctwTopic
     );
     
     await interaction.editReply(result.message);
