@@ -19,7 +19,7 @@ module.exports = async (message) => {
     }
      if (message.content.toLowerCase() === '!pkmom') {
         const result = pkGameService.startNewGame();
-        // Sửa lỗi: Chỉ gửi thuộc tính 'message' từ đối tượng trả về.
+        // Sửa lỗi: Chỉ gửi thuộc tính 'message' từ đối tượng trả về /
         return message.reply(result.message);
     }
 
