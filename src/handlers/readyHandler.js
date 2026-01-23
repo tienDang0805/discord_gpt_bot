@@ -1,7 +1,7 @@
 const { REST, Routes } = require('discord.js');
 const commands = require('../commands');
 const play = require('play-dl'); // Thêm play-dl
-
+const BeautyService = require('../services/beautyService');
 module.exports = async (client) => {
   console.log(`🤖 Bot đã online với tên: ${client.user.tag}`);
   console.log(`🆔 Bot ID: ${client.user.id}`);
@@ -30,7 +30,7 @@ module.exports = async (client) => {
   client.user.setPresence({
     status: 'online',
     activities: [{
-      name: 'Địt Mẹ Cuộc đời',
+      name: '',
       type: 4 // CUSTOM
     }],
   });
@@ -53,7 +53,7 @@ module.exports = async (client) => {
       activities: [{ name: '/tool | /thoitiet', type: 2 }],
       status: 'online'
     });
-    
+  BeautyService.start(client);
   } catch (error) {
     console.error('❌ Lỗi khi đăng ký commands:', error);
   }

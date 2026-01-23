@@ -7,20 +7,17 @@ const readyHandler = require('./handlers/readyHandler');
 const messageHandler = require('./handlers/messageHandler');
 const interactionHandler = require('./handlers/interactionHandler');
 const GptChatService = require('./services/gptChatService');
-const QuizService = require('./services/quizService'); // THÊM DÒNG NÀY
+const QuizService = require('./services/quizService');
 const CatchTheWordService = require('./services/catchTheWordService');
 const mongoose = require('mongoose');
 
 
 
-// Gán QuizService vào client để có thể truy cập từ các handler
 discordClient.quizService = QuizService;
 discordClient.catchTheWordService = CatchTheWordService;
 
-// Gán discordClient vào global để QuizService có thể fetch channel/user
 global.discordClient = discordClient;
 
-// Đăng ký các event handlers
 discordClient.once('ready', () => readyHandler(discordClient));
 discordClient.on('messageCreate', messageHandler);
 mongoose.connect(process.env.MONGODB_URI)
@@ -28,17 +25,12 @@ mongoose.connect(process.env.MONGODB_URI)
   .catch(err => console.error('Lỗi kết nối MongoDB:', err));
 
 
-// ==========================================================
-// CẬP NHẬT TRÌNH XỬ LÝ INTERACTION
-// ==========================================================
 discordClient.on('interactionCreate', async (interaction) => {
-    // 1. Xử lý Slash Command (giữ nguyên)
     if (interaction.isChatInputCommand()) {
         interactionHandler(interaction);
         return;
     }
 
-    // 2. Xử lý Submit Modal (giữ nguyên)
     if (interaction.type === InteractionType.ModalSubmit) {
         if (interaction.customId === 'personality_modal_v2') {
             try {
@@ -55,7 +47,7 @@ discordClient.on('interactionCreate', async (interaction) => {
                 await GptChatService.updateBotConfig(newConfigData);
 
                 const clearHistoryButton = new ButtonBuilder()
-                    .setCustomId('confirm_clear_history_v2') // Thêm v2 để tránh xung đột id cũ nếu có
+                    .setCustomId('confirm_clear_history_v2') 
                     .setLabel('Xóa luôn lịch sử chat')
                     .setStyle(ButtonStyle.Danger)
                     .setEmoji('🗑️');
@@ -89,15 +81,12 @@ discordClient.on('interactionCreate', async (interaction) => {
                 await interaction.editReply({ content: '❌ Đã xảy ra lỗi khi lưu cấu hình.', ephemeral: true });
             }
         }
-        // Chuyển xử lý modal submit cho interactionHandler
-        interactionHandler(interaction); // Gọi interactionHandler để xử lý quiz_setup_modal
+        interactionHandler(interaction);
         return;
     }
 
-    // 3. Xử lý bấm nút (ĐÃ CẬP NHẬT LOGIC)
     if (interaction.isButton()) {
-        // Chuyển xử lý nút bấm cho interactionHandler
-        interactionHandler(interaction); // Gọi interactionHandler để xử lý quiz_answer_ và các nút khác
+        interactionHandler(interaction); 
         return;
     }
 });
@@ -106,7 +95,6 @@ module.exports = async (client) => {
         console.log(`Đã đăng nhập với tên ${client.user.tag}!`);
         console.log(`ID Bot: ${client.user.id}`);
         
-        // Load commands
         const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
         const commands = [];
         for (const file of commandFiles) {
@@ -116,11 +104,9 @@ module.exports = async (client) => {
 
         const rest = new REST({ version: '9' }).setToken(process.env.DISCORD_TOKEN);
         
-        // Kiểm tra môi trường để quyết định cách đăng ký lệnh
         if (process.env.NODE_ENV === 'development') {
             const devGuildId = process.env.DEV_GUILD_ID;
             if (devGuildId) {
-                // Đăng ký lệnh riêng cho server dev
                 await rest.put(
                     Routes.applicationGuildCommands(client.user.id, devGuildId),
                     { body: commands }
@@ -130,7 +116,6 @@ module.exports = async (client) => {
                 console.warn('⚠️ Cảnh báo: Biến DEV_GUILD_ID không được tìm thấy. Các lệnh sẽ không được đăng ký ở môi trường dev.');
             }
         } else {
-            // Đăng ký global commands cho môi trường production
             await rest.put(
                 Routes.applicationCommands(client.user.id),
                 { body: commands }
@@ -143,5 +128,4 @@ module.exports = async (client) => {
     }
 };
 
-// Đăng nhập bot
 discordClient.login(process.env.DISCORD_TOKEN);

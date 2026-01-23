@@ -4,7 +4,7 @@ const { getWeatherDescription } = require('./services/weather');
 const ImageGenerationService = require('./services/imageGenerationService');
 const MusicService = require('./services/musicService');
 
-
+const BeautyService = require('./services/beautyService');
 module.exports = [
   // Command thoitiet
   {
@@ -277,6 +277,36 @@ module.exports = [
                 .setName('reset')
                 .setDescription('Reset danh tính về mặc định')
         ),
-    }
-   
+    },
+   {
+    data: new SlashCommandBuilder()
+      .setName('gai')
+      .setDescription('Test lấy ảnh gái xinh từ Pexels ngay lập tức'),
+
+    async execute(interaction) {
+        await interaction.deferReply(); 
+
+        try {
+            // Bây giờ BeautyService đã được import, dòng này mới chạy được
+            const imageUrl = await BeautyService.getPexelsImage();
+
+            if (imageUrl) {
+                // EmbedBuilder đã được import, dòng này mới chạy được
+                const embed = new EmbedBuilder()
+                    .setColor(0xFF69B4)
+                    .setTitle('🌸 Hàng về theo yêu cầu! 🌸')
+                    .setImage(imageUrl)
+                    .setFooter({ text: 'Test mode: Manual Trigger' })
+                    .setTimestamp();
+
+                await interaction.editReply({ embeds: [embed] });
+            } else {
+                await interaction.editReply('❌ Không lấy được ảnh (Lỗi API hoặc hết quota).');
+            }
+        } catch (error) {
+            console.error("Lỗi command /gai:", error);
+            await interaction.editReply('❌ Có lỗi xảy ra khi gọi gái.');
+        }
+    },
+  },   
 ];
