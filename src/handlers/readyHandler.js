@@ -9,7 +9,7 @@ module.exports = async (client) => {
 
   console.log('🔧 Đang khởi tạo YouTube connection...');
   try {
-  
+
     console.log('✅ YouTube connection ready (No Cookie Mode)');
     console.log('ℹ️ Play-dl version:', play.version);
     
