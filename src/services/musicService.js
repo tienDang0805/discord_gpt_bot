@@ -91,7 +91,7 @@ async _playTrack(guildId, track, retries = 1) {
     }
 
     try {
-        console.log(`[DEBUG] Processing URL: ${cleanUrl}`);
+
         
         // Kiểm tra URL hợp lệ trước
         const isYoutube = play.yt_validate(cleanUrl);
@@ -101,7 +101,7 @@ async _playTrack(guildId, track, retries = 1) {
 
         const abortController = new AbortController();
         const timeout = setTimeout(() => abortController.abort(), 30000);
-        console.log('[DEBUG] URL cuối cùng trước khi phát:', cleanUrl, typeof cleanUrl);
+
 
         const stream = await play.stream(cleanUrl, {
             discordPlayerCompatibility: true,
@@ -109,12 +109,12 @@ async _playTrack(guildId, track, retries = 1) {
             signal: abortController.signal
         }).catch(err => {
             clearTimeout(timeout);
-            console.error('[DEBUG] Stream error:', err);
+            console.error('Stream error:', err);
             throw err;
         });
 
         clearTimeout(timeout);
-        console.log('[DEBUG] Stream created successfully');
+
 
         const resource = createAudioResource(stream.stream, {
             inputType: stream.type,

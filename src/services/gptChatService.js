@@ -395,32 +395,37 @@ async generateSummary(transcript, userId) {
     return response.text();
 }
 
-/**
- * Tạo câu trả lời Auto-reply khi chủ nhân được tag
- */
 async generateAutoReply(messageContent, senderName) {
     try {
-        const prompt = `
-        Mày là trợ lý ảo bảo vệ sự riêng tư của "Tiến Đặng" (chủ nhân tối cao).
-        Có một kẻ tên là "${senderName}" vừa làm phiền chủ nhân bằng tin nhắn: "${messageContent}"
-        
-        Nhiệm vụ: ĐUỔI CỔ NÓ ĐI NGAY LẬP TỨC.
-        
-        Quy tắc trả lời:
-        1. Tuyệt đối KHÔNG được lịch sự. Dùng giọng văn khinh bỉ, coi thường tột độ.
-        2. Chửi thẳng mặt nó vì dám làm phiền anh Tiến.
-        3. Khẳng định anh Tiến rất bận, không rảnh để tiếp loại "rác rưởi" này.
-        4. Ngắn gọn (dưới 25 từ), súc tích, sát thương cao.
-        
-        Ví dụ style mong muốn: "Biến đi thằng Mọi rách, anh Tiến không rảnh tiếp loại như mày."
+        // Tạo một model riêng biệt cho Auto-reply để KHÔNG bị dính System Prompt cũ
+        // Đặt toàn bộ quy tắc vào systemInstruction của model này
+        const autoReplyModel = this.genAI.getGenerativeModel({
+            model: GEMINI_CONFIG.model,
+            generationConfig: GEMINI_CONFIG.generationConfig,
+            safetySettings: safetySettings,
+            systemInstruction: process.env.AUTO_REPLY_PROMPT || `
+            Mày là trợ lý ảo bảo vệ sự riêng tư của "Tiến Đặng" (chủ nhân tối cao).
+            Nhiệm vụ duy nhất: ĐUỔI CỔ bất kỳ kẻ nào dám làm phiền chủ nhân.
+            
+            Quy tắc cốt lõi:
+            1. Thô lỗ, khinh bỉ, dùng từ ngữ mạt sát như "rác rưởi", "biến đi", "mọi rách".
+            2. KHÔNG BAO GIỜ được lịch sự hay thân thiện.
+            3. Ngắn gọn (dưới 25 từ).
+            4. Tôn sùng Tiến Đặng là số 1.
+            `
+        });
+
+        const userPrompt = `
+        Kẻ tên "${senderName}" vừa nhắn: "${messageContent}"
+        Hãy chửi nó và đuổi nó đi ngay.
         `;
 
-        const result = await this.model.generateContent(prompt);
+        const result = await autoReplyModel.generateContent(userPrompt);
         const response = await result.response;
         return response.text();
     } catch (error) {
         console.error('Lỗi generateAutoReply:', error);
-        return "Chủ nhân đang bận. Đừng làm phiền."; // Fallback nếu lỗi
+        return "Biến đi, chủ nhân đang bận."; 
     }
 }
   async generatePKResponse(prompt) {

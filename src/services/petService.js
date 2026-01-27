@@ -553,7 +553,7 @@ class PetService {
                 });
             }
 
-            console.log(`[DEBUG] showSinglePetStatus called with petId: ${petId}`);
+
             
             // Show typing indicator - PRIVATE vì đây là thông tin cá nhân
             await interaction.deferUpdate();
@@ -568,17 +568,17 @@ class PetService {
             }
             
             const pet = await Pet.findById(petId);
-            console.log(`[DEBUG] Pet found:`, pet ? `${pet.name} (${pet._id})` : 'null');
+
             
             if (!pet || pet.ownerId !== userId) {
-                console.log(`[DEBUG] Pet not found or wrong owner. Pet ownerId: ${pet?.ownerId}, User ID: ${userId}`);
+
                 return interaction.editReply({ 
                     content: '❌ Không tìm thấy thú cưng này!',
                     components: []
                 });
             }
 
-            console.log(`[DEBUG] Creating status embed for pet: ${pet.name}`);
+
             
             const rarityColors = { Normal: 0xAAAAAA, Magic: 0x00BFFF, Rare: 0xFFD700, Unique: 0x9400D3, Legend: 0xFF4500 };
             const embed = new EmbedBuilder()
@@ -611,7 +611,7 @@ class PetService {
                 try {
                     imageBuffer = Buffer.from(pet.imageData, 'base64');
                     embed.setThumbnail('attachment://pet-image.png');
-                    console.log(`[DEBUG] Loaded image from DB for pet: ${pet.name}`);
+
                 } catch (imageError) {
                     console.warn(`[DEBUG] Failed to load image from DB:`, imageError);
                 }
@@ -619,7 +619,7 @@ class PetService {
 
             // Regenerate image if needed
             if (!imageBuffer && pet.imageBasePrompt) {
-                console.log(`[DEBUG] Regenerating image for pet: ${pet.name}`);
+
                 try {
                     const imageResult = await this.imageService.generateImage(pet.imageBasePrompt);
                     if (imageResult.success) {
@@ -630,7 +630,7 @@ class PetService {
                         try {
                             pet.imageData = imageBuffer.toString('base64');
                             await pet.save();
-                            console.log(`[DEBUG] Saved new image to DB for pet: ${pet.name}`);
+
                         } catch (saveError) {
                             console.warn(`[DEBUG] Failed to save image to DB:`, saveError);
                         }
@@ -678,7 +678,7 @@ class PetService {
 
             const row = new ActionRowBuilder().addComponents(backButton);
             
-            console.log(`[DEBUG] Sending status reply for pet: ${pet.name}`);
+
             
             await interaction.editReply({ 
                 embeds: [embed],
@@ -686,11 +686,11 @@ class PetService {
                 components: [row]
             });
             
-            console.log(`[DEBUG] Successfully sent status for pet: ${pet.name}`);
+
 
         } catch (error) {
-            console.error(`[DEBUG] Error in showSinglePetStatus:`, error);
-            console.error(`[DEBUG] Error stack:`, error.stack);
+            console.error(`Error in showSinglePetStatus:`, error);
+            console.error(`Error stack:`, error.stack);
             
             try {
                 await interaction.editReply({
@@ -698,7 +698,7 @@ class PetService {
                     components: []
                 });
             } catch (replyError) {
-                console.error(`[DEBUG] Failed to send error reply:`, replyError);
+                console.error(`Failed to send error reply:`, replyError);
             }
         }
     }

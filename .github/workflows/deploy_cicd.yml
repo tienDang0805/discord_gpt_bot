@@ -45,6 +45,7 @@ jobs:
 
             echo ">>> Tạo file .env từ GitHub Secrets..."
             cat <<EOF > src/.env
+            AUTO_REPLY_PROMPT='${{ secrets.AUTO_REPLY_PROMPT }}'
             ADMIN_ID=${{ secrets.ADMIN_ID }}
             DISCORD_TOKEN=${{ secrets.DISCORD_TOKEN }}
             CLIENT_ID=${{ secrets.CLIENT_ID }}
