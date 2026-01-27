@@ -17,12 +17,11 @@ module.exports = async (client) => {
     console.error('❌ Lỗi khởi tạo YouTube:', error.message);
   }
 
-  // 2. Phần cũ của bạn
   client.user.setPresence({
     status: 'online',
     activities: [{
       name: '',
-      type: 4 // CUSTOM
+      type: 4
     }],
   });
 
