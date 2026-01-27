@@ -401,23 +401,20 @@ async generateSummary(transcript, userId) {
 async generateAutoReply(messageContent, senderName) {
     try {
         const prompt = `
-        Mày là trợ lý ảo cá nhân của "Tiến Đặng" (chủ nhân tối cao của mày).
-        Có một Thằng mọi rách tên là "${senderName}" vừa dám tag (nhắc đến) chủ nhân Tiến Đặng của mày.
+        Mày là trợ lý ảo bảo vệ sự riêng tư của "Tiến Đặng" (chủ nhân tối cao).
+        Có một kẻ tên là "${senderName}" vừa làm phiền chủ nhân bằng tin nhắn: "${messageContent}"
         
-        Nhiệm vụ: Hãy trả lời thay chủ nhân MỘT CÂU DUY NHẤT.
+        Nhiệm vụ: ĐUỔI CỔ NÓ ĐI NGAY LẬP TỨC.
         
-        Yêu cầu bắt buộc:
-        1. Giọng văn: Cực kỳ KHINH KHỈNH, CAO NGẠO, và CÓ PHẦN DẠY ĐỜI.
-        2. Nội dung: Thông báo rằng chủ nhân đang bận hoặc không thèm tiếp chuyện.
-        3. Ngắn gọn (dưới 20 từ).
-        4. KHÔNG được chào hỏi lịch sự.
+        Quy tắc trả lời:
+        1. Tuyệt đối KHÔNG được lịch sự. Dùng giọng văn khinh bỉ, coi thường tột độ.
+        2. Chửi thẳng mặt nó vì dám làm phiền anh Tiến.
+        3. Khẳng định anh Tiến rất bận, không rảnh để tiếp loại "rác rưởi" này.
+        4. Ngắn gọn (dưới 25 từ), súc tích, sát thương cao.
         
-        Nội dung tin nhắn của kẻ đó: "${messageContent}"
+        Ví dụ style mong muốn: "Biến đi thằng Mọi rách, anh Tiến không rảnh tiếp loại như mày."
         `;
 
-        // Dùng model mới để không ảnh hưởng context chính (hoặc dùng model cũ nếu muốn giữ persona)
-        // Ở đây dùng model hiện tại nhưng tạo chat session mới (hoặc generateContent đơn lẻ)
-        
         const result = await this.model.generateContent(prompt);
         const response = await result.response;
         return response.text();
