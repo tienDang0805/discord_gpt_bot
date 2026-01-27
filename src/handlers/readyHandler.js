@@ -7,11 +7,9 @@ module.exports = async (client) => {
   console.log(`🆔 Bot ID: ${client.user.id}`);
   console.log(`📡 Đang kết nối đến ${client.guilds.cache.size} servers`);
 
-  // 1. Khởi tạo play-dl (không dùng cookie)
   console.log('🔧 Đang khởi tạo YouTube connection...');
   try {
-    // Kiểm tra kết nối YouTube
-    // const valid = await play.yt_validate("https://www.youtube.com");
+  
     console.log('✅ YouTube connection ready (No Cookie Mode)');
     console.log('ℹ️ Play-dl version:', play.version);
     
