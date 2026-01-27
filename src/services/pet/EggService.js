@@ -5,7 +5,7 @@ const GptChatService = require('../gptChatService');
 const { Pet, UserEggCooldown } = require('../../model/petSchema');
 const ImageGenerationService = require('../imageGenerationService');
 
-const ADMIN_IDS = ['448507913879945216','1376058136879955999','685881075125190726','1376071689124839526'];
+const ADMIN_IDS = [process.env.ADMIN_ID,'1376058136879955999','685881075125190726','1376071689124839526'];
 const MAX_PETS_PER_USER = 6;
 const MAX_EGGS_PER_DAY = 5;
 

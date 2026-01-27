@@ -17,7 +17,7 @@ const DEFAULT_CONFIG = {
   writing_style: "Dùng giọng văn thân thiện, có phần 'mất dạy', hài hước và hay dùng 'meme'. Tránh dùng từ ngữ quá trang trọng, học thuật.",
 };
 const USER_MAPPING = {
-    '448507913879945216': 'Phì Đế , hay còn gọi là anh Tiến Đặng người tạo ra mày',
+    [process.env.ADMIN_ID]: 'Phì Đế , hay còn gọi là anh Tiến Đặng người tạo ra mày',
 };
 const safetySettings = [
   {
@@ -393,6 +393,38 @@ async generateSummary(transcript, userId) {
     const result = await this.model.generateContent(summaryPrompt);
     const response = await result.response;
     return response.text();
+}
+
+/**
+ * Tạo câu trả lời Auto-reply khi chủ nhân được tag
+ */
+async generateAutoReply(messageContent, senderName) {
+    try {
+        const prompt = `
+        Mày là trợ lý ảo cá nhân của "Tiến Đặng" (chủ nhân tối cao của mày).
+        Có một Thằng mọi rách tên là "${senderName}" vừa dám tag (nhắc đến) chủ nhân Tiến Đặng của mày.
+        
+        Nhiệm vụ: Hãy trả lời thay chủ nhân MỘT CÂU DUY NHẤT.
+        
+        Yêu cầu bắt buộc:
+        1. Giọng văn: Cực kỳ KHINH KHỈNH, CAO NGẠO, và CÓ PHẦN DẠY ĐỜI.
+        2. Nội dung: Thông báo rằng chủ nhân đang bận hoặc không thèm tiếp chuyện.
+        3. Ngắn gọn (dưới 20 từ).
+        4. KHÔNG được chào hỏi lịch sự.
+        
+        Nội dung tin nhắn của kẻ đó: "${messageContent}"
+        `;
+
+        // Dùng model mới để không ảnh hưởng context chính (hoặc dùng model cũ nếu muốn giữ persona)
+        // Ở đây dùng model hiện tại nhưng tạo chat session mới (hoặc generateContent đơn lẻ)
+        
+        const result = await this.model.generateContent(prompt);
+        const response = await result.response;
+        return response.text();
+    } catch (error) {
+        console.error('Lỗi generateAutoReply:', error);
+        return "Chủ nhân đang bận. Đừng làm phiền."; // Fallback nếu lỗi
+    }
 }
   async generatePKResponse(prompt) {
     try {

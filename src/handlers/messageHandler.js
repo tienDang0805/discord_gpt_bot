@@ -6,13 +6,24 @@ const { sendLongMessage } = require('../utils/messageHelper');
 const { createAudioPlayer, createAudioResource , StreamType, demuxProbe, joinVoiceChannel, NoSubscriberBehavior, AudioPlayerStatus, VoiceConnectionStatus, getVoiceConnection } = require('@discordjs/voice')
 const play = require('play-dl')
 const fs = require('fs');
-const ADMIN_IDS = ['448507913879945216']; 
+const ADMIN_IDS = [process.env.ADMIN_ID]; 
 const pkGameService = require('../services/PKGameService');
 module.exports = async (message) => {
     if (message.author.bot) return;
 
     const isMentioned = message.mentions.has(discordClient.user) || 
                        (message.reference && await isReplyingToBot(message));
+
+    const TARGET_ADMIN_ID = process.env.ADMIN_ID;
+    if (message.mentions.users.has(TARGET_ADMIN_ID) && !message.author.bot) {
+        try {
+            await message.channel.sendTyping();
+            const replyContent = await GptChatService.generateAutoReply(message.content, message.author.username);
+            return message.reply(replyContent);
+        } catch (error) {
+            console.error("Lỗi Auto-reply:", error);
+        }
+    }
 
     if (message.content === 'hi') {
         return message.reply('hi cái lồn má mày');
