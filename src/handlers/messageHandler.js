@@ -37,7 +37,6 @@ module.exports = async (message) => {
     // Lệnh để tham gia game
     if (message.content.toLowerCase() === '!joinpk') {
         const result = pkGameService.joinGame(message.author);
-        // Sửa lỗi: Tương tự, chỉ gửi thuộc tính 'message'.
         return message.reply(result.message);
     }
     
