@@ -25,7 +25,7 @@ jobs:
             echo ">>> Kích hoạt môi trường NVM và Node.js..."
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-            
+
             echo ">>> Di chuyển đến thư mục dự án..."
             cd ${{ secrets.PROJECT_PATH }}
 
@@ -45,20 +45,20 @@ jobs:
 
             echo ">>> Tạo file .env từ GitHub Secrets..."
             cat <<EOF > src/.env
+            ADMIN_ID=${{ secrets.ADMIN_ID }}
             DISCORD_TOKEN=${{ secrets.DISCORD_TOKEN }}
             CLIENT_ID=${{ secrets.CLIENT_ID }}
             GUILD_ID=${{ secrets.GUILD_ID }}
             APIKEY_WEATHER=${{ secrets.APIKEY_WEATHER }}
             GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
             GOOGLE_TTS_API_KEY=${{ secrets.GOOGLE_TTS_API_KEY }}
-            YOUTUBE_COOKIE='${{ secrets.YOUTUBE_COOKIE }}'
             MONGODB_URI=${{ secrets.MONGODB_URI }}
             DISCORD_CHANNEL_ID=${{ secrets.DISCORD_CHANNEL_ID }}
             SYSTEM_PROMPT='${{ secrets.SYSTEM_PROMPT }}'
             CORE_RULES='${{ secrets.CORE_RULES }}'
-            
+
             EOF
-            
+
             echo ">>> Khởi động lại bot bằng PM2..."
             pm2 restart racoon-discord || pm2 start index.js --name "racoon-discord"
             pm2 save
@@ -117,5 +117,5 @@ jobs:
 
             sleep 5
             GITHUB_SHA="${{ github.sha }}" GITHUB_REPOSITORY="${{ github.repository }}" GITHUB_ACTOR="${{ github.actor }}" node ./send_deploy_notification.js
-            
+
             rm send_deploy_notification.js
