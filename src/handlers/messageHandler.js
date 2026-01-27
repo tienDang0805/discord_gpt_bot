@@ -15,13 +15,19 @@ module.exports = async (message) => {
                        (message.reference && await isReplyingToBot(message));
 
     const TARGET_ADMIN_ID = process.env.ADMIN_ID;
+    console.log(`[DEBUG] Message ID: ${message.id}, Content: "${message.content}", Author: ${message.author.id} (${message.author.tag})`);
+    console.log(`[DEBUG] TARGET_ADMIN_ID from ENV: ${TARGET_ADMIN_ID}`);
+    console.log(`[DEBUG] Mentions: ${message.mentions.users.map(u => u.id).join(', ')}`);
+
     if (message.mentions.users.has(TARGET_ADMIN_ID) && !message.author.bot) {
+        console.log(`[DEBUG] Detected tag for Admin (${TARGET_ADMIN_ID}). Triggering Auto-reply...`);
         try {
             await message.channel.sendTyping();
             const replyContent = await GptChatService.generateAutoReply(message.content, message.author.username);
+            console.log(`[DEBUG] Auto-reply content generated: ${replyContent}`);
             return message.reply(replyContent);
         } catch (error) {
-            console.error("Lỗi Auto-reply:", error);
+            console.error("[DEBUG] Lỗi Auto-reply:", error);
         }
     }
 

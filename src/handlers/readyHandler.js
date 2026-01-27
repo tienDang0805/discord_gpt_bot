@@ -7,23 +7,16 @@ module.exports = async (client) => {
   console.log(`🆔 Bot ID: ${client.user.id}`);
   console.log(`📡 Đang kết nối đến ${client.guilds.cache.size} servers`);
 
-  // 1. Khởi tạo play-dl với cookie trước
+  // 1. Khởi tạo play-dl (không dùng cookie)
   console.log('🔧 Đang khởi tạo YouTube connection...');
   try {
-    await play.setToken({
-      youtube: {
-        cookie: process.env.YOUTUBE_COOKIE
-      }
-    });
-
     // Kiểm tra kết nối YouTube
-    const valid = await play.yt_validate("https://www.youtube.com");
-    console.log('✅ YouTube connection ready');
+    // const valid = await play.yt_validate("https://www.youtube.com");
+    console.log('✅ YouTube connection ready (No Cookie Mode)');
     console.log('ℹ️ Play-dl version:', play.version);
     
   } catch (error) {
     console.error('❌ Lỗi khởi tạo YouTube:', error.message);
-    console.warn('⚠️ Các tính năng âm nhạc có thể không hoạt động');
   }
 
   // 2. Phần cũ của bạn

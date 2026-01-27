@@ -11,11 +11,6 @@ const {
 const play = require('play-dl');
 const { video_basic_info, stream } = require('play-dl');
 
-play.setToken({
-      youtube : {
-        cookie: process.env.YOUTUBE_COOKIE
-      }
- })
 const { EventEmitter } = require('events');
 
 class MusicService extends EventEmitter {
