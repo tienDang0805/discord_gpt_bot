@@ -11,7 +11,6 @@ const UserIdentityService = require('../services/UserIdentityService');
 module.exports = async (interaction) => {
     if (!interaction.isChatInputCommand() && !interaction.isButton() && !interaction.isModalSubmit() && !interaction.isStringSelectMenu()) return;
 
-    // Initialize services
     const imageGenService = new ImageGenerationService();
     const textToAudioService = new TextToAudioService();
     const quizService = interaction.client.quizService;
