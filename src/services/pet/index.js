@@ -1,4 +1,3 @@
-// src/services/pet/index.js
 
 const PetService = require('./PetService');
 const EggService = require('./EggService');
